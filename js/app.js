@@ -415,11 +415,12 @@ const GUIDE_ICON={build:'<span class="gi build" title="Builds surf">●</span>',
 
 /* ============================ MAPS (Leaflet, OSM/CARTO tiles) ============================ */
 const MAPS={};
-function tileLayer(){ return L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{maxZoom:18,subdomains:"abcd",attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>'}); }
+function tileLayer(){ return L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}); }
 function makeMap(id, opts){
   if(typeof L==="undefined"){ const el=document.getElementById(id); if(el) el.innerHTML='<p class="muted small" style="padding:10px">Map unavailable offline.</p>'; return null; }
   if(MAPS[id]){ try{MAPS[id].remove()}catch(e){} }
-  const m=L.map(id,Object.assign({zoomControl:true,attributionControl:true,scrollWheelZoom:false},opts)); tileLayer().addTo(m); MAPS[id]=m; return m;
+  const m=L.map(id,Object.assign({zoomControl:true,attributionControl:true,scrollWheelZoom:false,tap:true},opts)); tileLayer().addTo(m); MAPS[id]=m;
+  [50,300,1000].forEach(ms=>setTimeout(()=>{ try{ m.invalidateSize(); }catch(e){} },ms)); return m;
 }
 function pinIcon(color, label, big, below){ return L.divIcon({className:"pin-wrap",html:`<div class="pin ${big?"big":""} ${below?"below":""}" style="--c:${color}"><span>${label}</span></div>`,iconSize:null}); }
 function drawOverviewMap(M, slots){
@@ -432,14 +433,47 @@ function drawOverviewMap(M, slots){
   m.fitBounds(pts,{padding:[30,30]});
 }
 function drawSpotMap(S){
-  const s=S.spot, m=makeMap("spMap",{center:[s.lat,s.lon],zoom:12}); if(!m) return;
-  L.marker([s.lat,s.lon],{icon:pinIcon("#0e5fd8",esc(s.name),true)}).addTo(m);
-  L.circleMarker(s.sea,{radius:5,color:"#0b1f33",weight:1,fillColor:"#fff",fillOpacity:1}).bindTooltip("Model sea point").addTo(m);
-  // beach orientation + swell window wedge
-  const end=K.move(s.sea[0],s.sea[1],s.facing,6);
-  const w=[s.sea]; for(let a=s.bestSwell-s.swellHalf;a<=s.bestSwell+s.swellHalf;a+=10) w.push(K.move(s.sea[0],s.sea[1],a,9));
-  L.polygon(w,{color:"#0e5fd8",weight:1,dashArray:"4 3",fillOpacity:0.08}).bindTooltip("Swell window").addTo(m);
-  m.fitBounds([[s.lat,s.lon],...w],{padding:[20,20]});
+  const s=S.spot, el=document.getElementById("spMap"); if(!el) return;
+  el.innerHTML=`<iframe title="Google Maps – ${esc(s.name)}" src="https://maps.google.com/maps?q=${s.lat},${s.lon}&z=14&t=k&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>`;
+}
+
+
+/* ============================ GEAR: board, wetsuit, time in water ============================ */
+function waterTemp(S, h){
+  if(h&&h.sst!=null) return h.sst;
+  const i=S.hours.indexOf(h); let best=null, bd=1e9;
+  S.hours.forEach((x,k)=>{ if(x.sst!=null&&Math.abs(k-i)<bd){ bd=Math.abs(k-i); best=x.sst; } });
+  return best;
+}
+const SUITS=[
+  [18,"3/2 mm","",[150,180]],[15,"4/3 mm","booties optional",[120,150]],[12,"4/3 mm","booties",[100,140]],
+  [9,"5/4 mm hooded","5 mm booties, gloves optional",[80,110]],[6,"5/4 or 6/5 mm hooded","5–7 mm booties + 3–5 mm gloves",[60,90]],
+  [-5,"6/5 mm hooded","7 mm booties + 5 mm mittens",[40,70]]];
+function gearFor(S, h){
+  const s=S.spot, P=h&&h.P||{}, wt=waterTemp(S,h), air=h?h.temp:null;
+  const st=wt==null?null:SUITS.find(x=>wt>=x[0]);
+  let mins=st?st[3].slice():null; const chill=[];
+  if(mins){ if(air!=null&&air<3){ mins=mins.map(m=>m-15); chill.push(`air ${fmt(air,0)}°C`);} if(P.ws>10){ mins=mins.map(m=>m-15); chill.push(`wind ${fmt(P.ws,0)} m/s`);} mins=mins.map(m=>Math.max(30,m)); }
+  // board
+  const hb=P.hb||0, T=P.T||0, lab=P.ws!=null?windLabel(P.rel,P.ws):"", clean=["offshore","side-off","glassy"].includes(lab);
+  let board, why;
+  if(hb<0.45||T<4){ board="Longboard 9'+ or foamie"; why="small, short-period windswell – you need paddle power and glide"; }
+  else if(hb<0.8){ board=clean?"Fish / groveller 5'8–6'4 (or mid-length 7'+)":"Mid-length 7'0–8'0"; why=clean?"knee–waist and clean: volume + speed for weak Kattegat walls":"weak, bumpy waves – extra length to get in early"; }
+  else if(hb<1.4){ board=clean?"Shortboard with volume / hybrid 6'0–6'6":"Mid-length 7'0 or hybrid with volume"; why=clean?"waist–head and groomed – the best Kattegat days":"onshore chop – volume to paddle through and catch the short-period sets"; }
+  else { board="Shortboard / step-up 6'2–6'8"; why="solid, powerful for the Kattegat – control over volume"; }
+  if(s.level.startsWith("Beginner")&&hb<1) why+="; beginners: foamie 8'+";
+  const extra=s.bottom.match(/stone|rock|pebble|boulder/i)?"Rocks/stones – booties recommended regardless of temperature.":"";
+  return {wt, air, suit:st?`${st[1]}${st[2]?" + "+st[2]:""}`:"–", mins, chill, board, why, extra};
+}
+function gearHtml(S, h, compact){
+  const g=gearFor(S,h);
+  const time=g.mins?`${g.mins[0]}–${g.mins[1]} min`:"–";
+  if(compact) return `<div class="gear"><span>🏄 <b>${g.board}</b></span><span>🌡 Water <b>${fmt(g.wt,0)}°C</b> · ${g.suit}</span><span>⏱ ~${time} in the water</span></div>`;
+  return `<div class="gear-g">
+    <div><span>Board</span><b>${g.board}</b><em>${g.why}.</em></div>
+    <div><span>Water</span><b>${fmt(g.wt,1)}°C</b><em>air ${fmt(g.air,0)}°C · DWD EWAM sea temperature</em></div>
+    <div><span>Wetsuit</span><b>${g.suit}</b><em>${g.extra||"for a normal session"}</em></div>
+    <div><span>Time in the water</span><b>${time}</b><em>comfortable with that suit${g.chill.length?` · shortened for ${g.chill.join(" & ")}`:""}</em></div></div>`;
 }
 
 /* ============================ HOME ============================ */
@@ -455,14 +489,14 @@ function renderHome(){
       <div class="hero-p"><b>${pct(top.pPeak)}</b><span>chance of a<br>good session</span></div></div>
       <div class="hero-surf"><span class="big">${rangeTxt(top.peakH)}<small>m</small></span><span>${sizeWords(P.hb)}<br>${chip(top.peakH.q)}</span></div>
       <div class="hero-meta">${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s · ${windLabel(P.rel,P.ws)} · ${fmt(P.Hs)} m @ ${fmt(P.T)} s from ${compass(P.dir)}</div>
-      ${planHtml(s, top)}</a>`;
+      ${planHtml(s, top)}${gearHtml(top.S, top.peakH, true)}</a>`;
   }
   const list = slots.slice(0,6).map((sl,i)=>{ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak);
     return `<details class="slot" ${i===0?"open":""}><summary>
       <span class="slot-p"><b>${pct(sl.pPeak)}</b><span class="tier ${T.c}">${T.t}</span></span>
       <span class="slot-main"><b>${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span></span>
       <span class="slot-r">${chip(sl.peakH.q)}<span>${rangeTxt(sl.peakH)} m</span></span></summary>
-      ${planHtml(s, sl)}${whyHtml(sl.S, sl.peakH)}${locHtml(s)}
+      ${planHtml(s, sl)}${gearHtml(sl.S, sl.peakH, true)}${whyHtml(sl.S, sl.peakH)}${locHtml(s)}
       <a class="btn small-btn" href="#spot-${s.id}" data-t="${sl.peakH.t}">Open ${esc(s.name)} forecast →</a></details>`; }).join("");
   const days=[...new Set(M.spots[0].hours.filter(h=>!h.past&&h.day).map(h=>dayKey(h.t)))].slice(0,5);
   const rows=M.spots.map(S=>{
@@ -539,11 +573,12 @@ function renderSpot(id){
      <div class="stats">
        <div><span>Wind</span><b>${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)}</b><em>${P.ws!=null?windLabel(P.rel,P.ws):""}${sel.gust!=null?` · g${fmt(sel.gust,0)}`:""}</em></div>
        <div><span>Windswell</span><b>${fmt(P.Hs)} m</b><em>${fmt(P.T)} s from ${compass(P.dir)}</em></div>
-       <div><span>Water</span><b>${fmt(sel.sst,0)}°C</b><em>air ${fmt(sel.temp,0)}°C</em></div>
+       <div><span>Water</span><b>${fmt(waterTemp(S,sel),0)}°C</b><em>air ${fmt(sel.temp,0)}°C</em></div>
        <div><span>Level</span><b>${sel.sl!=null?(sel.sl>0?"+":"")+fmt(sel.sl*100,0):"–"}</b><em>cm vs mean</em></div>
      </div>
      ${selSlot?planHtml(s, selSlot):""}
    </div>
+   <div class="card"><h3>Board & wetsuit · ${tDay(sel.t)} ${tHr(sel.t)}</h3>${gearHtml(S, sel)}</div>
    <div class="card"><h3>Why · ${tDay(sel.t)} ${tHr(sel.t)}</h3>${whyHtml(S, sel)}${checklist(S, sel)}</div>
    <div class="card"><h3>Best time slots · next 5 days</h3><p class="small muted">Best daylight block per day. Tap to open that day.</p>
      <div class="tbl-wrap"><table class="hours slotsT"><thead><tr><th>Slot</th><th>Chance</th><th>Rating</th><th>Wind</th><th>Drive</th></tr></thead><tbody>${slotRows||"<tr><td colspan=5 class='muted'>No daylight data</td></tr>"}</tbody></table></div></div>
@@ -552,7 +587,7 @@ function renderSpot(id){
    <div class="card"><div class="ch-h"><h3>Hour by hour</h3><label class="tog"><input type="checkbox" id="night" ${VIEW.night?"checked":""}> night</label></div>
      <div id="dayChart"></div>
      <div class="tbl-wrap"><table class="hours"><thead><tr><th>Time</th><th>Chance</th><th>Rating</th><th>Surf m</th><th>Windswell</th><th>Wind m/s</th></tr></thead><tbody>${rows}</tbody></table></div></div>
-   <div class="card"><h3>Location</h3>${locHtml(s)}<div class="mapbox small-map" id="spMap"></div><p class="small muted">Blue wedge = directions the sea must come from; white dot = where the wave model is sampled.</p></div>
+   <div class="card"><h3>Location</h3>${locHtml(s)}<div class="mapbox small-map" id="spMap"></div><p class="small muted">Google Maps satellite view of the beach. Tap the route links for live traffic.</p></div>
    <div class="card"><h3>What makes ${esc(s.name)} work</h3><p>${esc(s.desc)}</p>
      <dl class="kv"><dt>Needs</dt><dd>${esc(s.swellNeed)}</dd><dt>Best wind</dt><dd>${esc(s.idealWind)}</dd><dt>Bottom</dt><dd>${esc(s.bottom)}</dd><dt>Level</dt><dd>${esc(s.level)}</dd><dt>Hazards</dt><dd>${esc(s.hazards)}</dd></dl>
      <h3 style="margin-top:14px">Wind direction guide</h3>
@@ -653,6 +688,10 @@ function ratingsCard(){
    <table class="cmp">${RATING_DEF.map(([n,r,d])=>{const R=RATINGS.find(x=>x.t===n);return `<tr><td><span class="chip" style="--c:${R.c}">${n}</span></td><td class="small">q ${r}</td><td class="small">${d}</td></tr>`}).join("")}</table>
    <h3 style="margin-top:14px">What the % means</h3>
    <p class="small"><b>Chance of a good session</b> = probability the hour rates <b>Fair or better</b>. It combines three runs – Kattegat model with DMI wind (50%), with ECMWF wind (20%) and DWD's EWAM wind-sea (30%) – and leans on the spot's 5-year history the further ahead you look. <b>Go</b> ≥ 60% · <b>Worth a look</b> 40–60% · <b>Long shot</b> 20–40%.</p>
+   <h3 style="margin-top:14px">Board & wetsuit guide</h3>
+   <table class="cmp small"><tr><td><b>Surf &lt; 0.45 m or &lt; 4 s</b></td><td>Longboard 9'+ / foamie</td></tr><tr><td><b>0.45–0.8 m</b></td><td>Fish/groveller when clean, mid-length 7–8' when bumpy</td></tr><tr><td><b>0.8–1.4 m</b></td><td>Shortboard with volume / hybrid when clean, mid-length in onshore chop</td></tr><tr><td><b>&gt; 1.4 m</b></td><td>Shortboard / step-up 6'2–6'8</td></tr></table>
+   <table class="cmp small" style="margin-top:8px">${SUITS.map((x,i)=>`<tr><td><b>${i===SUITS.length-1?"&lt; 6":x[0]+(i?"–"+SUITS[i-1][0]:"+")}°C</b></td><td>${x[1]}${x[2]?" + "+x[2]:""}</td><td>${x[3][0]}–${x[3][1]} min</td></tr>`).join("")}</table>
+   <p class="small muted">Time in the water assumes a well-fitting suit; it is cut by 15 min each for air below 3°C or wind above 10 m/s. Kattegat windswell is short-period and weak, so it pays to ride more volume than you would on the North Sea.</p>
    <p class="small"><b>Slots</b> = the best daylight block per day per spot (up to 4 h). Drive plan = leave Copenhagen drive time + 15 min before the slot (parking, wetsuit).</p></div>`;
 }
 
