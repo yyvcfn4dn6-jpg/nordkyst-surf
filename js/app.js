@@ -478,7 +478,7 @@ function gearHtml(S, h, compact){
   if(compact) return `<div class="gear"><span>🏄 <b>${g.board}</b></span><span>🌡 Water <b>${fmt(g.wt,0)}°C</b> · ${g.suit}</span><span>⏱ ~${time} in the water</span></div>`;
   return `<div class="gear-g">
     <div><span>Board</span><b>${g.board}</b><em>${g.why}.</em></div>
-    <div><span>Water</span><b>${fmt(g.wt,1)}°C</b><em>air ${fmt(g.air,0)}°C · DWD EWAM sea temperature</em></div>
+    <div><span>Water</span><b>${fmt(g.wt,1)}°C</b><em>air ${fmt(g.air,0)}°C · sea-surface forecast</em></div>
     <div><span>Wetsuit</span><b>${g.suit}</b><em>${g.extra||"for a normal session"}</em></div>
     <div><span>Time in the water</span><b>${time}</b><em>comfortable with that suit${g.chill.length?` · shortened for ${g.chill.join(" & ")}`:""}</em></div></div>`;
 }

@@ -1,5 +1,5 @@
 /* Nordkyst service worker: app shell offline, forecast data network-first */
-const SHELL = "nordkyst-shell-v4";
+const SHELL = "nordkyst-shell-v5";
 const DATA = "nordkyst-data-v1";
 const FILES = ["./", "index.html", "js/kwm.js", "js/app.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png", "vendor/leaflet/leaflet.js", "vendor/leaflet/leaflet.css"];
 
@@ -21,7 +21,7 @@ self.addEventListener("fetch", e => {
   }
   if (url.origin === location.origin) {
     // shell: network first so updates land, cache as fallback
-    e.respondWith(fetch(e.request).then(r => {
+    e.respondWith(fetch(e.request, {cache: "no-cache"}).then(r => {
       const copy = r.clone(); caches.open(SHELL).then(c => c.put(e.request, copy)); return r;
     }).catch(() => caches.match(e.request).then(m => m || caches.match("index.html"))));
   }
