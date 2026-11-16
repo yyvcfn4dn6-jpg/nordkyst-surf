@@ -492,7 +492,7 @@ function renderHome(){
     <div class="tbl-wrap"><table class="mx"><tr><th></th>${DIRS8.map(d=>`<th>${d[0]}</th>`).join("")}</tr>
     ${SPOTS.map(s=>`<tr><td><a href="#spot-${s.id}">${esc(s.name.split(" /")[0])}</a></td>${windGuide(s).map(x=>`<td title="${x.txt} (${Math.round(x.F)} km)">${GUIDE_ICON[x.code]}</td>`).join("")}</tr>`).join("")}</table></div>
     <div class="legend-r small"><span>${GUIDE_ICON.build} builds surf</span><span>${GUIDE_ICON.small} small</span><span>${GUIDE_ICON.clean} cleans up (offshore)</span><span>${GUIDE_ICON.none} nothing</span></div>
-    <p class="small"><b>In short:</b> NW is the money direction for Liseleje–Tisvildeleje–Gilleleje (longest fetch, 100–140 km). N favours Gilleleje & Hornbæk. W–SW only works at Lynæs-side and cleans up the north coast. Ålsgårde needs a straight N blow (Kullen blocks the NE).</p></div>`;
+    <p class="small"><b>In short:</b> NW is the money direction – the longest open water (100–140 km) and it hits every spot. W builds surf from Liseleje to Gilleleje but misses Lynæs, Hornbæk and Ålsgårde. N works everywhere; NE is blocked by Sweden/Kullen. S–SE (and SW for the north coast) is offshore: no new surf, but it cleans up what a NW blow left behind.</p></div>`;
   el.innerHTML = `${hero || `<div class="hero quiet"><div class="hero-spot">No data yet</div></div>`}
     <div class="sec-h"><h2>Best slots</h2><span class="muted small">chance of ≥ Fair session</span></div>
     <div class="slots">${list}</div>
