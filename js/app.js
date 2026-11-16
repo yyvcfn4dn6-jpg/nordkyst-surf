@@ -173,6 +173,10 @@ async function fetchWaves(){
     `&timeformat=unixtime&past_days=${PAST_DAYS}&forecast_days=${FC_DAYS}`;
   return arr(await getJSON(url));
 }
+async function fetchSea(){
+  const pts=SPOTS.map(s=>s.sea);
+  return arr(await getJSON(`https://marine-api.open-meteo.com/v1/marine?latitude=${pts.map(p=>p[0]).join(",")}&longitude=${pts.map(p=>p[1]).join(",")}&hourly=sea_surface_temperature,sea_level_height_msl&timeformat=unixtime&past_days=${PAST_DAYS}&forecast_days=${FC_DAYS}`));
+}
 function series(loc, v, m){ const h=loc&&loc.hourly; if(!h) return null; return h[v+"_"+m]||h[v]||null; }
 
 /* ============================ the model run ============================ */
@@ -193,7 +197,7 @@ function genWind(spotIdx, W, model){
     return {t,U:u,dir:D[i]};
   });
 }
-function buildModel(W, Wv, clim, cal){
+function buildModel(W, Wv, clim, cal, Ws){
   const now=Date.now()/1000, n=SPOTS.length;
   const spots = SPOTS.map((s,si)=>{
     const beach=W[si], times=beach.hourly.time, C=cal.spots[s.id]||cal.global;
@@ -208,6 +212,8 @@ function buildModel(W, Wv, clim, cal){
       const h=series(loc,"wind_wave_height"); if(h&&h.some(v=>v!=null)){ const map={}; loc.hourly.time.forEach((t,k)=>map[t]=k);
         ew={map,h,T:series(loc,"wind_wave_period"),d:series(loc,"wind_wave_direction"),sst:series(loc,"sea_surface_temperature"),sl:series(loc,"sea_level_height_msl")}; break; }
     }
+    let seaMap=null; const SL=Ws&&Ws[si];
+    if(SL&&SL.hourly){ seaMap={}; SL.hourly.time.forEach((t,k)=>seaMap[t]=k); }
     const gDmi=series(beach,"wind_gusts_10m","dmi_seamless"), tDmi=series(beach,"temperature_2m","dmi_seamless");
     // how long the generating wind has blown from roughly the same direction (h)
     const dur=[]; const G=runs.kwm_dmi&&runs.kwm_dmi.gen;
@@ -221,6 +227,7 @@ function buildModel(W, Wv, clim, cal){
       if(runs.kwm_ecmwf){ const o=runs.kwm_ecmwf.sea[i]; add("kwm_ecmwf",o.Hs,o.Tp,o.dir,wsE&&wsE[i],wdE&&wdE[i]); }
       let sst=null, sl=null;
       if(ew){ const k=ew.map[t]; if(k!=null){ add("ewam",ew.h[k],ew.T&&ew.T[k],ew.d&&ew.d[k],wsD&&wsD[i],wdD&&wdD[i]); sst=ew.sst&&ew.sst[k]; sl=ew.sl&&ew.sl[k]; } }
+      if(seaMap&&seaMap[t]!=null){ const k=seaMap[t]; if(sst==null) sst=SL.hourly.sea_surface_temperature[k]; if(sl==null) sl=SL.hourly.sea_level_height_msl[k]; }
       const P = scen.find(x=>x.key==="kwm_dmi")||scen[0]||null;
       let p=null,q=null,lo=null,hi=null;
       if(scen.length){
@@ -788,7 +795,7 @@ function route(){
 }
 let lastSpot=null;
 window.addEventListener("hashchange",()=>{ const h=location.hash; if(h.startsWith("#spot-")&&h!==lastSpot) window.scrollTo(0,0); lastSpot=h; route(); });
-function rebuild(){ STATE=buildModel(RAW.W, RAW.Wv, CLIM, CAL); }
+function rebuild(){ STATE=buildModel(RAW.W, RAW.Wv, CLIM, CAL, RAW.Ws); }
 function setStatus(html, cls=""){ $("#status").innerHTML=html; $("#status").className="status "+cls; }
 
 async function boot(){
@@ -797,16 +804,17 @@ async function boot(){
   const cached=load("nk_last_v3");
   let W, Wv=null, err=null;
   try{ W=await fetchWind(); }catch(e){ err=e; }
-  if(W){ try{ Wv=await fetchWaves(); }catch(e){ console.warn("waves",e); } }
-  if(!W && cached){ W=cached.W; Wv=cached.Wv; }
+  let Ws=null;
+  if(W){ try{ [Wv,Ws]=await Promise.all([fetchWaves().catch(e=>{console.warn("waves",e);return null}), fetchSea().catch(e=>{console.warn("sea",e);return null})]); }catch(e){ console.warn(e); } }
+  if(!W && cached){ W=cached.W; Wv=cached.Wv; Ws=cached.Ws; }
   if(!W){
     $("#view").innerHTML=`<div class="card"><h3>Couldn't load forecast data</h3><p>${esc(err&&err.message)}</p>
       <p class="small muted">Nordkyst fetches DMI data straight from open-meteo.com. If you opened it inside a chat/file preview, those block outside data – open it from its web address or the home-screen app instead.</p>
       <button class="btn primary" onclick="boot()">Try again</button></div>`;
     setStatus("Offline","err"); return;
   }
-  if(!err) store("nk_last_v3",{W,Wv,at:Date.now()});
-  RAW={W,Wv}; rebuild(); route();
+  if(!err) store("nk_last_v3",{W,Wv,Ws,at:Date.now()});
+  RAW={W,Wv,Ws}; rebuild(); route();
   const at=err&&cached?new Date(cached.at):new Date();
   setStatus(`${err?"Offline · data from ":"Updated "}${at.toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"})}${Wv?"":" · EWAM unavailable"}`, err?"warn":"");
   try{ CLIM=await fetchClimate(); rebuild(); if(location.hash.startsWith("#spot-")) route(); }catch(e){ console.warn("climate",e); }
