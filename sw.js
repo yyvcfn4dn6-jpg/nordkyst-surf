@@ -1,7 +1,7 @@
 /* Nordkyst service worker: app shell offline, forecast data network-first */
-const SHELL = "nordkyst-shell-v1";
+const SHELL = "nordkyst-shell-v2";
 const DATA = "nordkyst-data-v1";
-const FILES = ["./", "index.html", "js/kwm.js", "js/app.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
+const FILES = ["./", "index.html", "js/kwm.js", "js/app.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png", "vendor/leaflet/leaflet.js", "vendor/leaflet/leaflet.css"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(SHELL).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

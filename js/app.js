@@ -200,7 +200,7 @@ function buildModel(W, Wv, clim, cal){
     // KWM runs
     const runs={};
     [["kwm_dmi","dmi_seamless"],["kwm_ecmwf","ecmwf_ifs025"]].forEach(([key,m])=>{
-      const g=genWind(si,W,m); if(g) runs[key]={sea:K.run(g,FETCH[s.id]), model:m};
+      const g=genWind(si,W,m); if(g) runs[key]={sea:K.run(g,FETCH[s.id]), model:m, gen:g};
     });
     // EWAM wind-sea (first non-empty point)
     let ew=null;
@@ -209,6 +209,9 @@ function buildModel(W, Wv, clim, cal){
         ew={map,h,T:series(loc,"wind_wave_period"),d:series(loc,"wind_wave_direction"),sst:series(loc,"sea_surface_temperature"),sl:series(loc,"sea_level_height_msl")}; break; }
     }
     const gDmi=series(beach,"wind_gusts_10m","dmi_seamless"), tDmi=series(beach,"temperature_2m","dmi_seamless");
+    // how long the generating wind has blown from roughly the same direction (h)
+    const dur=[]; const G=runs.kwm_dmi&&runs.kwm_dmi.gen;
+    if(G) G.forEach((g,i)=>{ let d=0; if(g.U!=null&&g.U>=5){ for(let k=i;k>=0&&k>i-48;k--){ const x=G[k]; if(x.U==null||x.U<5||angDiff(x.dir,g.dir)>35) break; d++; } } dur[i]=d; });
     const hours = times.map((t,i)=>{
       if(t < now - SHOW_PAST_H*3600) return null;
       const scen=[]; let wsD=series(beach,"wind_speed_10m","dmi_seamless"), wdD=series(beach,"wind_direction_10m","dmi_seamless");
@@ -228,7 +231,7 @@ function buildModel(W, Wv, clim, cal){
         lo=Math.min(...scen.map(x=>x.hb)); hi=Math.max(...scen.map(x=>x.hb));
       }
       return {t, past:t<now-1800, day:isDay(t), scen, P, p, q, lo, hi, gust:gDmi&&gDmi[i], temp:tDmi&&tDmi[i], sst, sl,
-              growing: runs.kwm_dmi&&runs.kwm_dmi.sea[i].growing};
+              growing: runs.kwm_dmi&&runs.kwm_dmi.sea[i].growing, feff: runs.kwm_dmi?runs.kwm_dmi.sea[i].Feff:null, gen: G?G[i]:null, dur: dur[i]||0};
     }).filter(Boolean);
     hours.forEach((h,i)=>{ // clean-up flag: onshore blow easing / turning
       if(!h.P) return; const on=x=>x.P?x.P.ws*Math.cos(Math.min(x.P.rel,180)*RAD):0;
@@ -326,137 +329,290 @@ function showTip(x,y,html){ const t=tip(); t.innerHTML=html; t.style.display="bl
 function hideTip(){ tip().style.display="none"; }
 document.addEventListener("scroll", hideTip, true);
 
+/* ============================ ANALYTICS: slots, plans, explanations ============================ */
+const DIRS8 = [["N",0],["NE",45],["E",90],["SE",135],["S",180],["SW",225],["W",270],["NW",315]];
+function tier(p){ return p>=0.6?{t:"Go",c:"go"}:p>=0.4?{t:"Worth a look",c:"look"}:p>=0.2?{t:"Long shot",c:"long"}:{t:"Unlikely",c:"no"}; }
+const pct = p => p==null?"–":Math.round(p*100)+"%";
+
+/* best slot per day per spot: peak hour, grown while chance stays near the peak */
+function spotSlots(S){
+  const out=[], byDay={};
+  S.hours.forEach((h,i)=>{ if(h.past||!h.day||h.p==null) return; (byDay[dayKey(h.t)]||(byDay[dayKey(h.t)]=[])).push(i); });
+  Object.values(byDay).forEach(idx=>{
+    let pk=idx.reduce((a,i)=>S.hours[i].p>S.hours[a].p?i:a, idx[0]);
+    const peak=S.hours[pk].p, ok=i=>idx.includes(i)&&S.hours[i].p>=Math.max(peak*0.75,peak-0.12);
+    let a=pk, b=pk; while(b-a<3){ const L=ok(a-1), R=ok(b+1); if(!L&&!R) break; if(R&&(!L||S.hours[b+1].p>=S.hours[a-1].p)) b++; else a--; }
+    const hs=S.hours.slice(a,b+1);
+    out.push({S, hours:hs, start:hs[0].t, end:hs[hs.length-1].t+3600, peakH:S.hours[pk], pPeak:peak, pAvg:hs.reduce((x,h)=>x+h.p,0)/hs.length});
+  });
+  return out.sort((x,y)=>y.pPeak-x.pPeak);
+}
+function allSlots(M){ return M.spots.flatMap(spotSlots).sort((a,b)=>b.pPeak-a.pPeak); }
+function plan(spot, start, end){
+  const leave=start-(spot.driveMin+15)*60, arrive=start-15*60, home=end+spot.driveMin*60, sun=sunFor(start);
+  return {leave, arrive, home, firstLight: sun.rise, dark: sun.set};
+}
+function planHtml(spot, sl){ const p=plan(spot, sl.start, sl.end);
+  return `<div class="plan"><span>🚗 Leave CPH <b>${tHr(p.leave)}</b></span><span>Arrive <b>${tHr(p.arrive)}</b></span><span>Surf <b>${tHr(sl.start)}–${tHr(sl.end)}</b></span><span>Home ~<b>${tHr(p.home)}</b></span></div>`; }
+function locHtml(s){
+  return `<div class="loc"><b>📍 ${esc(s.parking)}</b><span class="muted">${s.lat.toFixed(3)}° N, ${s.lon.toFixed(3)}° E · ${s.driveKm} km, ~${s.driveMin} min from Rådhuspladsen</span>
+   <span><a href="${mapsLink(s)}" target="_blank" rel="noopener">Google Maps route ↗</a> · <a href="https://maps.apple.com/?saddr=${ORIGIN.lat},${ORIGIN.lon}&daddr=${s.lat},${s.lon}&dirflg=d" target="_blank" rel="noopener">Apple Maps ↗</a></span></div>`; }
+
+/* executive explanation of one hour at one spot */
+function whyHtml(S, h){
+  const s=S.spot, P=h.P; if(!P) return "";
+  const g=h.gen, lines=[];
+  if(g&&g.U!=null){
+    const fe=Math.round(K.effFetch(FETCH[s.id], g.dir));
+    lines.push(`<b>Setup:</b> ${compass(g.dir)} ${fmt(g.U,0)} m/s over the Kattegat${h.dur>=2?` for ${h.dur} h`:""} · ${fe} km of open water toward ${esc(s.name)} → <b>${fmt(P.Hs)} m windswell at ${fmt(P.T)} s</b> from ${compass(P.dir)}.`);
+  }
+  const lab=windLabel(P.rel,P.ws);
+  lines.push(`<b>At the beach:</b> ${compass(P.wd)} ${fmt(P.ws,0)} m/s = <b>${lab}</b> for a ${compass(s.facing)}-facing beach → ${lab==="offshore"||lab==="side-off"||lab==="glassy"?"clean faces":lab==="cross-shore"?"some texture":"bumpy, wind-chopped"}.`);
+  let trend = h.cleanup ? "Wind easing/turning after the blow – the classic Kattegat clean-up window." : (h.growing&&P.rel<70&&P.ws>8) ? "Sea still building under onshore wind – size up, quality down." : "";
+  lines.push(`<b>Verdict:</b> ${RATINGS[Math.max(0,ratingIdx(h.q))].t}, ${sizeWords(P.hb).toLowerCase()} (${rangeTxt(h)} m), <b>${pct(h.p)} chance</b> of a good session. ${trend}`);
+  return `<div class="why">${lines.map(l=>`<p>${l}</p>`).join("")}</div>`;
+}
+/* what the spot needs vs. what the forecast gives */
+function checklist(S, h){
+  const s=S.spot, P=h.P||{}; const st=v=>v===2?'<i class="ok">✓</i>':v===1?'<i class="mid">~</i>':'<i class="bad">✗</i>';
+  const dd=P.dir==null?999:angDiff(P.dir,s.bestSwell), ws=windScore(P.rel??0,P.ws??0);
+  const rows=[
+    ["Surf size", `≥ ${s.minWave} m at beach`, `${fmt(P.hb)} m`, P.hb>=s.minWave?2:P.hb>=s.minWave*0.75?1:0],
+    ["Sea direction", `${compass(s.bestSwell-s.swellHalf)}–${compass(s.bestSwell+s.swellHalf)}`, compass(P.dir), dd<s.swellHalf?2:dd<s.swellHalf+20?1:0],
+    ["Wave period", "≥ 5 s", `${fmt(P.T)} s`, P.T>=5?2:P.T>=4?1:0],
+    ["Wind at beach", "off/side-off, or < 6 m/s", `${compass(P.wd)} ${fmt(P.ws,0)} · ${P.ws!=null?windLabel(P.rel,P.ws):"–"}`, ws>=0.75?2:ws>=0.45?1:0],
+    ["Daylight", "sunrise–sunset", h.day?"yes":"dark", h.day?2:0]
+  ];
+  return `<table class="chk"><tr><th>Condition</th><th>Spot needs</th><th>Forecast</th><th></th></tr>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${st(r[3])}</td></tr>`).join("")}</table>`;
+}
+/* one-line reason a spot does / doesn't work at an hour */
+function reason(S, h){
+  const s=S.spot, P=h&&h.P; if(!P) return "no data";
+  const fe=Math.round(K.effFetch(FETCH[s.id], h.gen?h.gen.dir:P.wd)), dd=angDiff(P.dir,s.bestSwell);
+  const sz=sizeScore(P.hb,s.minWave), wsc=windScore(P.rel,P.ws), lab=windLabel(P.rel,P.ws);
+  if(sz<0.35){
+    if(dd>=s.swellHalf) return `Sea from ${compass(P.dir)} misses its ${compass(s.bestSwell)} window – too small (${fmt(P.hb)} m).`;
+    if(fe<40) return `Only ${fe} km of open water to the ${compass(h.gen?h.gen.dir:P.wd)} – sea can't build (${fmt(P.hb)} m).`;
+    return `Not enough wind/duration yet – ${fmt(P.hb)} m at the beach.`;
+  }
+  if(wsc<0.45) return `${fmt(P.hb)} m but ${lab} ${fmt(P.ws,0)} m/s – messy.`;
+  if(lab==="offshore"||lab==="side-off"||lab==="glassy") return `${fmt(P.hb)} m, ${lab} – clean. Faces ${compass(s.facing)}, so this wind grooms it.`;
+  return `${fmt(P.hb)} m with ${lab} ${fmt(P.ws,0)} m/s – rideable, some texture.`;
+}
+/* static wind-direction guide from coastline geometry */
+function windGuide(s){
+  return DIRS8.map(([n,d])=>{
+    const F=K.effFetch(FETCH[s.id], d), rel=windRel(s,d), inW=angDiff(d,s.bestSwell)<s.swellHalf+10;
+    let code, txt;
+    if(F>=50&&inW){ code="build"; txt= rel<70?"Builds surf – onshore, messy while it blows; best as it eases":"Builds surf with cross/side wind – best case"; }
+    else if(rel>=100){ code="clean"; txt="Offshore/side-off – no new surf, cleans up what's left"; }
+    else if(F>=20&&inW){ code="small"; txt="Short fetch – small windswell only"; }
+    else { code="none"; txt= F<20?"Blocked by land – no surf":"Sea runs past the beach – little surf"; }
+    return {n,d,F,rel,code,txt,lab:windLabel(rel,8)};
+  });
+}
+const GUIDE_ICON={build:'<span class="gi build" title="Builds surf">●</span>',small:'<span class="gi small" title="Small surf">◐</span>',clean:'<span class="gi clean" title="Cleans up">○</span>',none:'<span class="gi none" title="Nothing">–</span>'};
+
+/* ============================ MAPS (Leaflet, OSM/CARTO tiles) ============================ */
+const MAPS={};
+function tileLayer(){ return L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{maxZoom:18,subdomains:"abcd",attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>'}); }
+function makeMap(id, opts){
+  if(typeof L==="undefined"){ const el=document.getElementById(id); if(el) el.innerHTML='<p class="muted small" style="padding:10px">Map unavailable offline.</p>'; return null; }
+  if(MAPS[id]){ try{MAPS[id].remove()}catch(e){} }
+  const m=L.map(id,Object.assign({zoomControl:true,attributionControl:true,scrollWheelZoom:false},opts)); tileLayer().addTo(m); MAPS[id]=m; return m;
+}
+function pinIcon(color, label, big, below){ return L.divIcon({className:"pin-wrap",html:`<div class="pin ${big?"big":""} ${below?"below":""}" style="--c:${color}"><span>${label}</span></div>`,iconSize:null}); }
+function drawOverviewMap(M, slots){
+  const m=makeMap("ovMap",{center:[56.0,12.25],zoom:9}); if(!m) return;
+  const pts=[[ORIGIN.lat,ORIGIN.lon]];
+  M.spots.forEach((S,k)=>{ const s=S.spot, sl=slots.find(x=>x.S===S), i=sl?ratingIdx(sl.peakH.q):-1;
+    const mk=L.marker([s.lat,s.lon],{icon:pinIcon(i>=0?RATINGS[i].c:"#9aa3ad", `${esc(s.name.split(" /")[0])} · ${sl?pct(sl.pPeak):"–"}`, false, k%2===1)}).addTo(m);
+    mk.on("click",()=>{ location.hash="#spot-"+s.id; }); pts.push([s.lat,s.lon]); });
+  L.marker([ORIGIN.lat,ORIGIN.lon],{icon:L.divIcon({className:"pin-wrap",html:'<div class="pin home"><span>Copenhagen</span></div>',iconSize:null})}).addTo(m);
+  m.fitBounds(pts,{padding:[30,30]});
+}
+function drawSpotMap(S){
+  const s=S.spot, m=makeMap("spMap",{center:[s.lat,s.lon],zoom:12}); if(!m) return;
+  L.marker([s.lat,s.lon],{icon:pinIcon("#0e5fd8",esc(s.name),true)}).addTo(m);
+  L.circleMarker(s.sea,{radius:5,color:"#0b1f33",weight:1,fillColor:"#fff",fillOpacity:1}).bindTooltip("Model sea point").addTo(m);
+  // beach orientation + swell window wedge
+  const end=K.move(s.sea[0],s.sea[1],s.facing,6);
+  const w=[s.sea]; for(let a=s.bestSwell-s.swellHalf;a<=s.bestSwell+s.swellHalf;a+=10) w.push(K.move(s.sea[0],s.sea[1],a,9));
+  L.polygon(w,{color:"#0e5fd8",weight:1,dashArray:"4 3",fillOpacity:0.08}).bindTooltip("Swell window").addTo(m);
+  m.fitBounds([[s.lat,s.lon],...w],{padding:[20,20]});
+}
+
 /* ============================ HOME ============================ */
 function renderHome(){
-  const M=STATE, wins=windows(M), el=$("#view");
-  let hero;
-  if(wins.length){
-    const w=wins[0], s=w.S.spot, a=w.h[0], z=w.h[w.h.length-1], P=w.peak.P;
-    hero=`<a class="hero" href="#spot-${s.id}" data-t="${w.peak.t}">
-      <div class="hero-k">Best bet · next 5 days</div>
-      <div class="hero-row"><div><div class="hero-spot">${esc(s.name)}</div><div class="hero-when">${tDay(a.t)} · ${tHr(a.t)}–${tHr(z.t+3600)}</div></div>
-      <div class="hero-p"><b>${Math.round(w.pMax*100)}%</b><span>chance</span></div></div>
-      <div class="hero-surf"><span class="big">${rangeTxt(w.peak)}<small>m</small></span><span>${sizeWords(P.hb)}<br>${chip(w.peak.q)}</span></div>
-      <div class="hero-meta">${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s · ${windLabel(P.rel,P.ws)} · ${fmt(P.Hs)} m @ ${fmt(P.T)} s from ${compass(P.dir)}${w.h.some(h=>h.cleanup)?" · clean-up":""}</div>
-      <div class="hero-drive">🚗 Leave Copenhagen ${leaveBy(s,a.t)} · ${s.driveMin} min</div></a>`;
-  } else {
-    let b=null; M.spots.forEach(S=>S.hours.forEach(h=>{ if(!h.past&&h.day&&h.p!=null&&(!b||h.p>b.h.p)) b={S,h}; }));
-    hero=`<div class="hero quiet"><div class="hero-k">Next 5 days</div><div class="hero-spot">No real window</div>
-      <div class="hero-when">The Kattegat needs a sustained W–N blow to build windswell.${b?` Best outside chance: <b>${esc(b.S.spot.name)}</b> ${tDay(b.h.t)} ${tHr(b.h.t)} (${Math.round(b.h.p*100)}%).`:""}</div></div>`;
+  const M=STATE, el=$("#view"), slots=allSlots(M), top=slots[0];
+  const spotBest=S=>slots.find(x=>x.S===S);
+  let hero="";
+  if(top){
+    const s=top.S.spot, P=top.peakH.P, T=tier(top.pPeak);
+    hero=`<a class="hero" href="#spot-${s.id}" data-t="${top.peakH.t}">
+      <div class="hero-k">Best slot · next 5 days <span class="tier ${T.c}">${T.t}</span></div>
+      <div class="hero-row"><div><div class="hero-spot">${esc(s.name)}</div><div class="hero-when">${tDay(top.start)} · ${tHr(top.start)}–${tHr(top.end)}</div></div>
+      <div class="hero-p"><b>${pct(top.pPeak)}</b><span>chance of a<br>good session</span></div></div>
+      <div class="hero-surf"><span class="big">${rangeTxt(top.peakH)}<small>m</small></span><span>${sizeWords(P.hb)}<br>${chip(top.peakH.q)}</span></div>
+      <div class="hero-meta">${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s · ${windLabel(P.rel,P.ws)} · ${fmt(P.Hs)} m @ ${fmt(P.T)} s from ${compass(P.dir)}</div>
+      ${planHtml(s, top)}</a>`;
   }
-  const days=[...new Set(M.spots[0].hours.filter(h=>!h.past).map(h=>dayKey(h.t)))].slice(0,5);
+  const list = slots.slice(0,6).map((sl,i)=>{ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak);
+    return `<details class="slot" ${i===0?"open":""}><summary>
+      <span class="slot-p"><b>${pct(sl.pPeak)}</b><span class="tier ${T.c}">${T.t}</span></span>
+      <span class="slot-main"><b>${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span></span>
+      <span class="slot-r">${chip(sl.peakH.q)}<span>${rangeTxt(sl.peakH)} m</span></span></summary>
+      ${planHtml(s, sl)}${whyHtml(sl.S, sl.peakH)}${locHtml(s)}
+      <a class="btn small-btn" href="#spot-${s.id}" data-t="${sl.peakH.t}">Open ${esc(s.name)} forecast →</a></details>`; }).join("");
+  const days=[...new Set(M.spots[0].hours.filter(h=>!h.past&&h.day).map(h=>dayKey(h.t)))].slice(0,5);
   const rows=M.spots.map(S=>{
-    const s=S.spot, nowH=S.hours.find(h=>!h.past)||S.hours[0], P=nowH.P;
-    const w=wins.find(x=>x.S===S);
+    const s=S.spot, nowH=S.hours.find(h=>!h.past)||S.hours[0], P=nowH.P, b=spotBest(S);
     const strip=days.map(dk=>{ const hs=S.hours.filter(h=>dayKey(h.t)===dk&&h.day&&!h.past&&h.p!=null);
-      const best=hs.reduce((a,h)=>!a||h.q>a.q?h:a,null); const i=best?ratingIdx(best.q):-1;
-      return `<span class="seg" title="${best?RATINGS[i].t:"–"}"><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i><em>${best?tWd(best.t).slice(0,2):""}</em></span>`; }).join("");
+      const best=hs.reduce((a,h)=>!a||h.p>a.p?h:a,null); const i=best?ratingIdx(best.q):-1;
+      return `<span class="seg"><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i><em>${best?tWd(best.t).slice(0,2)+" "+pct(best.p):""}</em></span>`; }).join("");
     const ri=ratingIdx(nowH.q);
     return `<a class="row" href="#spot-${s.id}">
       <span class="stripe" style="background:${ri>=0?RATINGS[ri].c:"#cfd3d8"}"></span>
-      <div class="row-main"><div class="row-top"><b>${esc(s.name)}</b><span class="muted">${s.driveMin} min</span></div>
-        <div class="row-now"><span class="surf">${rangeTxt(nowH)} m</span>${chip(nowH.q)}<span class="wind">${P?arrow(P.wd,13)+" "+fmt(P.ws,0)+" "+windLabel(P.rel,P.ws):""}</span></div>
+      <div class="row-main"><div class="row-top"><b>${esc(s.name)}</b><span class="muted">${s.driveMin} min · faces ${compass(s.facing)}</span></div>
+        <div class="row-now"><span class="muted small">Now</span><span class="surf">${rangeTxt(nowH)} m</span>${chip(nowH.q)}<span class="wind">${P?arrow(P.wd,13)+" "+fmt(P.ws,0)+" "+windLabel(P.rel,P.ws):""}</span></div>
         <div class="strip">${strip}</div></div>
-      <div class="row-next">${w?`<b>${Math.round(w.pMax*100)}%</b><span>${tWd(w.h[0].t)} ${tHr(w.h[0].t)}</span>`:`<span class="muted">no window</span>`}</div></a>`;
+      <div class="row-next">${b?`<b>${pct(b.pPeak)}</b><span>${tWd(b.start)} ${tHr(b.start)}</span>`:`<span class="muted">–</span>`}</div></a>`;
   }).join("");
-  el.innerHTML = `${hero}
-    <div class="sec-h"><h2>Spots</h2><span class="muted">now · 5-day best</span></div>
+  // compare all spots at the top slot's peak hour
+  let cmp="";
+  if(top){
+    const t=top.peakH.t, g=top.peakH.gen;
+    const r=M.spots.map(S=>({S,h:S.hours.find(h=>h.t===t)})).filter(x=>x.h).sort((a,b)=>(b.h.p||0)-(a.h.p||0));
+    cmp=`<div class="card"><h3>Why the pick differs by spot</h3>
+      <p class="small muted">All spots at the best slot (${tDay(t)} ${tHr(t)}). Same weather – ${g?`${compass(g.dir)} ${fmt(g.U,0)} m/s over the Kattegat`:"same wind"} – but each beach faces a different way and sees a different amount of open water.</p>
+      <table class="cmp">${r.map(({S,h})=>`<tr><td><a href="#spot-${S.spot.id}" data-t="${t}"><b>${esc(S.spot.name)}</b></a><br><span class="muted small">faces ${compass(S.spot.facing)}</span></td><td>${chip(h.q)}<br><b>${pct(h.p)}</b></td><td class="small">${reason(S,h)}</td></tr>`).join("")}</table></div>`;
+  }
+  const matrix=`<div class="card"><h3>Which wind works where</h3>
+    <p class="small muted">Computed from each beach's orientation and the open water (fetch) upwind. Kattegat surf = wind-sea, so the wind direction decides everything.</p>
+    <div class="tbl-wrap"><table class="mx"><tr><th></th>${DIRS8.map(d=>`<th>${d[0]}</th>`).join("")}</tr>
+    ${SPOTS.map(s=>`<tr><td><a href="#spot-${s.id}">${esc(s.name.split(" /")[0])}</a></td>${windGuide(s).map(x=>`<td title="${x.txt} (${Math.round(x.F)} km)">${GUIDE_ICON[x.code]}</td>`).join("")}</tr>`).join("")}</table></div>
+    <div class="legend-r small"><span>${GUIDE_ICON.build} builds surf</span><span>${GUIDE_ICON.small} small</span><span>${GUIDE_ICON.clean} cleans up (offshore)</span><span>${GUIDE_ICON.none} nothing</span></div>
+    <p class="small"><b>In short:</b> NW is the money direction for Liseleje–Tisvildeleje–Gilleleje (longest fetch, 100–140 km). N favours Gilleleje & Hornbæk. W–SW only works at Lynæs-side and cleans up the north coast. Ålsgårde needs a straight N blow (Kullen blocks the NE).</p></div>`;
+  el.innerHTML = `${hero || `<div class="hero quiet"><div class="hero-spot">No data yet</div></div>`}
+    <div class="sec-h"><h2>Best slots</h2><span class="muted small">chance of ≥ Fair session</span></div>
+    <div class="slots">${list}</div>
+    <div class="sec-h"><h2>Map</h2><span class="muted small">tap a spot</span></div>
+    <div class="mapbox" id="ovMap"></div>
+    <div class="sec-h"><h2>Spots</h2><span class="muted small">now · day by day · best</span></div>
     <div class="list">${rows}</div>
-    <div class="legend-r">${RATINGS.map(r=>`<span><i style="background:${r.c}"></i>${r.t}</span>`).join("")}</div>
-    ${wins.length>1?`<div class="sec-h"><h2>More windows</h2></div><div class="wins">${wins.slice(1,6).map(w=>`<a class="win" href="#spot-${w.S.spot.id}" data-t="${w.peak.t}"><b>${esc(w.S.spot.name)}</b><span>${tDay(w.h[0].t)} ${tHr(w.h[0].t)}–${tHr(w.h[w.h.length-1].t+3600)}</span>${chip(w.peak.q)}<em>${Math.round(w.pMax*100)}%</em></a>`).join("")}</div>`:""}`;
+    <div class="legend-r">${RATINGS.map(r=>`<span><i style="background:${r.c}"></i>${r.t}</span>`).join("")} <a href="#model" class="link">How ratings work →</a></div>
+    ${cmp}${matrix}`;
   el.querySelectorAll("[data-t]").forEach(a=>a.addEventListener("click",()=>{ VIEW.sel=+a.dataset.t; VIEW.day=dayKey(+a.dataset.t); }));
+  drawOverviewMap(M, slots);
 }
 
 /* ============================ SPOT ============================ */
 function renderSpot(id){
   const S=STATE.spots.find(x=>x.spot.id===id); if(!S){ location.hash="#home"; return; }
-  const s=S.spot, future=S.hours.filter(h=>!h.past);
-  const days=[...new Set(S.hours.filter(h=>!h.past||h.day).map(h=>dayKey(h.t)))].filter(dk=>S.hours.some(h=>dayKey(h.t)===dk&&!h.past));
+  const s=S.spot, future=S.hours.filter(h=>!h.past), slots=spotSlots(S);
+  const days=[...new Set(S.hours.map(h=>dayKey(h.t)))].filter(dk=>S.hours.some(h=>dayKey(h.t)===dk&&!h.past));
   const nextDay=future.find(h=>h.day)||future[0]||S.hours[0];
-  if(!VIEW.day||!days.includes(VIEW.day)) VIEW.day=dayKey(nextDay.t);
+  if(!VIEW.day||!days.includes(VIEW.day)) VIEW.day=slots[0]?dayKey(slots[0].start):dayKey(nextDay.t);
   let sel=S.hours.find(h=>h.t===VIEW.sel);
-  if(!sel||dayKey(sel.t)!==VIEW.day){ const dh=S.hours.filter(h=>dayKey(h.t)===VIEW.day&&h.day&&!h.past); sel=dh.reduce((a,h)=>!a||h.q>a.q?h:a,null)||S.hours.find(h=>dayKey(h.t)===VIEW.day&&!h.past)||future[0]||S.hours[0]; }
+  if(!sel||dayKey(sel.t)!==VIEW.day){ const sl=slots.find(x=>dayKey(x.start)===VIEW.day); sel=sl?sl.peakH:(S.hours.find(h=>dayKey(h.t)===VIEW.day&&!h.past&&h.day)||nextDay); }
   VIEW.sel=sel.t;
-  const P=sel.P||{}, mNow=monthOf(STATE.now), C=S.cal;
-  const tabs=days.map(dk=>{ const hs=S.hours.filter(h=>dayKey(h.t)===dk&&h.day); const b=hs.reduce((a,h)=>!a||(h.q??-1)>(a.q??-1)?h:a,null);
-    const i=b?ratingIdx(b.q):-1; const allPast=hs.every(h=>h.past);
-    return `<button class="dtab ${dk===VIEW.day?"on":""} ${allPast?"past":""}" data-d="${dk}"><span>${tWd(S.hours.find(h=>dayKey(h.t)===dk).t)}</span><b>${b?rangeTxt(b):"–"}</b><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i></button>`; }).join("");
+  const P=sel.P||{}, mNow=monthOf(STATE.now), C=S.cal, cl=CLIM&&CLIM[s.id];
+  const tabs=days.map(dk=>{ const sl=slots.find(x=>dayKey(x.start)===dk); const i=sl?ratingIdx(sl.peakH.q):-1;
+    return `<button class="dtab ${dk===VIEW.day?"on":""}" data-d="${dk}"><span>${tWd(S.hours.find(h=>dayKey(h.t)===dk).t)}</span><b>${sl?pct(sl.pPeak):"–"}</b><em>${sl?rangeTxt(sl.peakH)+" m":""}</em><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i></button>`; }).join("");
   const dh=S.hours.filter(h=>dayKey(h.t)===VIEW.day&&(VIEW.night||h.day||h.t===sel.t));
   const rows=dh.map(h=>{ const p=h.P||{}; return `<tr class="${h.t===sel.t?"sel":""} ${h.past?"past":""}" data-t="${h.t}">
-     <td>${tHr(h.t)}</td><td>${chip(h.q)}</td><td class="num"><b>${rangeTxt(h)}</b></td>
+     <td>${tHr(h.t)}</td><td><b>${pct(h.p)}</b></td><td>${chip(h.q)}</td><td class="num"><b>${rangeTxt(h)}</b></td>
      <td class="num">${fmt(p.Hs)}<small> m</small> ${fmt(p.T,0)}<small>s</small> <span class="muted">${compass(p.dir)}</span></td>
-     <td class="num">${arrow(p.wd,13)} ${fmt(p.ws,0)}<small>${h.gust!=null?"–"+fmt(h.gust,0):""}</small> <span class="muted">${p.ws!=null?windLabel(p.rel,p.ws):""}</span></td>
-     <td class="num">${h.p!=null?Math.round(h.p*100)+"%":"–"}</td></tr>`; }).join("");
+     <td class="num">${arrow(p.wd,13)} ${fmt(p.ws,0)}<small>${h.gust!=null?"–"+fmt(h.gust,0):""}</small> <span class="muted">${p.ws!=null?windLabel(p.rel,p.ws):""}</span></td></tr>`; }).join("");
   const sims=similarSessions(s.id, P), mySess=SESSIONS.filter(x=>x.spot===s.id).sort((a,b)=>b.start-a.start);
-  const cl=CLIM&&CLIM[s.id];
+  const slotRows=slots.slice().sort((a,b)=>a.start-b.start).map(sl=>{ const T=tier(sl.pPeak), p=plan(s,sl.start,sl.end);
+    return `<tr data-t="${sl.peakH.t}" class="${dayKey(sl.start)===VIEW.day?"sel":""}"><td><b>${tWd(sl.start)}</b> ${tHr(sl.start)}–${tHr(sl.end)}</td><td><b>${pct(sl.pPeak)}</b><br><span class="tier ${T.c}">${T.t}</span></td><td>${chip(sl.peakH.q)}<br><span class="small">${rangeTxt(sl.peakH)} m</span></td><td class="small">${arrow(sl.peakH.P.wd,12)} ${compass(sl.peakH.P.wd)} ${fmt(sl.peakH.P.ws,0)} ${windLabel(sl.peakH.P.rel,sl.peakH.P.ws)}</td><td class="small">leave ${tHr(p.leave)}</td></tr>`; }).join("");
+  const guide=windGuide(s);
+  const selSlot=slots.find(x=>x.hours.includes(sel));
   $("#view").innerHTML=`
-   <div class="sp-head">
-     <a class="back" href="#home" aria-label="Back">‹</a>
-     <div><h1>${esc(s.name)}</h1><div class="muted">${esc(s.area)} · faces ${compass(s.facing)} · ${s.driveMin} min drive</div></div>
-   </div>
+   <div class="sp-head"><a class="back" href="#home" aria-label="Back">‹</a>
+     <div><h1>${esc(s.name)}</h1><div class="muted">${esc(s.area)} · faces ${compass(s.facing)} · ${s.driveMin} min from Copenhagen</div></div></div>
    <div class="now-card">
      <div class="now-top"><div><div class="muted small">${tDay(sel.t)} · ${tHr(sel.t)}${sel.past?" (past)":""}</div>
        <div class="big">${rangeTxt(sel)}<small>m</small></div><div>${sizeWords(P.hb)}</div></div>
-       <div class="now-r">${chip(sel.q)}<div class="pct"><b>${sel.p!=null?Math.round(sel.p*100)+"%":"–"}</b><span>chance good</span></div></div></div>
+       <div class="now-r">${chip(sel.q)}<div class="pct"><b>${pct(sel.p)}</b><span>chance of a<br>good session</span></div></div></div>
      <div class="stats">
        <div><span>Wind</span><b>${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)}</b><em>${P.ws!=null?windLabel(P.rel,P.ws):""}${sel.gust!=null?` · g${fmt(sel.gust,0)}`:""}</em></div>
        <div><span>Windswell</span><b>${fmt(P.Hs)} m</b><em>${fmt(P.T)} s from ${compass(P.dir)}</em></div>
        <div><span>Water</span><b>${fmt(sel.sst,0)}°C</b><em>air ${fmt(sel.temp,0)}°C</em></div>
        <div><span>Level</span><b>${sel.sl!=null?(sel.sl>0?"+":"")+fmt(sel.sl*100,0):"–"}</b><em>cm vs mean</em></div>
      </div>
-     ${sel.cleanup?`<div class="note">Clean-up window: onshore blow easing/turning – often the best session of a Kattegat event.</div>`:""}
-     ${sel.growing&&P.rel<70&&P.ws>8?`<div class="note">Windswell still building under onshore wind – size up, quality down.</div>`:""}
+     ${selSlot?planHtml(s, selSlot):""}
    </div>
+   <div class="card"><h3>Why · ${tDay(sel.t)} ${tHr(sel.t)}</h3>${whyHtml(S, sel)}${checklist(S, sel)}</div>
+   <div class="card"><h3>Best time slots · next 5 days</h3><p class="small muted">Best daylight block per day. Tap to open that day.</p>
+     <div class="tbl-wrap"><table class="hours slotsT"><thead><tr><th>Slot</th><th>Chance</th><th>Rating</th><th>Wind</th><th>Drive</th></tr></thead><tbody>${slotRows||"<tr><td colspan=5 class='muted'>No daylight data</td></tr>"}</tbody></table></div></div>
+   <div class="card"><h3>Chance by hour · 5 days</h3><div id="pChart"></div></div>
    <div class="dtabs">${tabs}</div>
-   <div class="card"><div class="ch-h"><h3>Surf height & rating</h3><label class="tog"><input type="checkbox" id="night" ${VIEW.night?"checked":""}> night</label></div>
+   <div class="card"><div class="ch-h"><h3>Hour by hour</h3><label class="tog"><input type="checkbox" id="night" ${VIEW.night?"checked":""}> night</label></div>
      <div id="dayChart"></div>
-     <div class="legend-r small">${RATINGS.map(r=>`<span><i style="background:${r.c}"></i>${r.t}</span>`).join("")}</div>
-     <div class="tbl-wrap"><table class="hours"><thead><tr><th>Time</th><th>Rating</th><th>Surf m</th><th>Windswell</th><th>Wind m/s</th><th>Chance</th></tr></thead><tbody>${rows}</tbody></table></div>
-   </div>
+     <div class="tbl-wrap"><table class="hours"><thead><tr><th>Time</th><th>Chance</th><th>Rating</th><th>Surf m</th><th>Windswell</th><th>Wind m/s</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+   <div class="card"><h3>Location</h3>${locHtml(s)}<div class="mapbox small-map" id="spMap"></div><p class="small muted">Blue wedge = directions the sea must come from; white dot = where the wave model is sampled.</p></div>
+   <div class="card"><h3>What makes ${esc(s.name)} work</h3><p>${esc(s.desc)}</p>
+     <dl class="kv"><dt>Needs</dt><dd>${esc(s.swellNeed)}</dd><dt>Best wind</dt><dd>${esc(s.idealWind)}</dd><dt>Bottom</dt><dd>${esc(s.bottom)}</dd><dt>Level</dt><dd>${esc(s.level)}</dd><dt>Hazards</dt><dd>${esc(s.hazards)}</dd></dl>
+     <h3 style="margin-top:14px">Wind direction guide</h3>
+     <table class="cmp">${guide.map(x=>`<tr><td><b>${x.n}</b></td><td>${GUIDE_ICON[x.code]}</td><td class="small">${x.txt}<br><span class="muted">${Math.round(x.F)} km fetch · ${x.lab}</span></td></tr>`).join("")}</table></div>
    <div class="card"><h3>Model check · ${tHr(sel.t)}</h3>
-     <p class="muted small">Same hour from each source. Agreement → higher chance; disagreement → lower confidence.</p>
-     <table class="mc"><tr><th></th><th>Windswell</th><th>Surf</th><th>q</th></tr>
+     <table class="mc"><tr><th></th><th>Windswell</th><th>Surf</th><th>Rating</th></tr>
      ${[["kwm_dmi","Kattegat model · DMI wind"],["kwm_ecmwf","Kattegat model · ECMWF wind"],["ewam","DWD EWAM wind-sea"]].map(([k,l])=>{const x=sel.scen.find(y=>y.key===k);return `<tr><td>${l}</td><td>${x?fmt(x.Hs)+" m · "+fmt(x.T)+" s "+compass(x.dir):"n/a"}</td><td>${x?fmt(x.hb):"–"}</td><td>${x?chip(x.q):"–"}</td></tr>`}).join("")}</table>
+     <p class="small muted">Agreement between the three runs raises the chance; disagreement lowers it.</p>
      ${C&&C.n?`<p class="small">Calibrated from your ${C.n} session${C.n>1?"s":""}: size ×${fmt(C.size,2)}, rating ${C.qBias>=0?"+":""}${fmt(C.qBias*100,0)} pts.</p>`:""}
-     ${sims.length?`<p class="small"><b>${sims.length} similar logged session${sims.length>1?"s":""}</b> here averaged <b>${RATINGS[Math.round(sims.reduce((a,x)=>a+x.rating,0)/sims.length)].t}</b>.</p>`:""}
-   </div>
+     ${sims.length?`<p class="small"><b>${sims.length} similar logged session${sims.length>1?"s":""}</b> here averaged <b>${RATINGS[Math.round(sims.reduce((a,x)=>a+x.rating,0)/sims.length)].t}</b>.</p>`:""}</div>
    <a class="btn primary block" href="#log-${s.id}">＋ Log a session at ${esc(s.name)}</a>
-   <div class="card"><h3>Spot guide</h3><p>${esc(s.desc)}</p>
-     <dl class="kv"><dt>Needs</dt><dd>${esc(s.swellNeed)}</dd><dt>Best wind</dt><dd>${esc(s.idealWind)}</dd><dt>Bottom</dt><dd>${esc(s.bottom)}</dd><dt>Level</dt><dd>${esc(s.level)}</dd><dt>Hazards</dt><dd>${esc(s.hazards)}</dd><dt>Parking</dt><dd>${esc(s.parking)}</dd>
-     <dt>Drive</dt><dd>${s.driveMin} min / ${s.driveKm} km from central Copenhagen · <a href="${mapsLink(s)}" target="_blank" rel="noopener">route ↗</a></dd></dl></div>
-   <div class="card"><h3>Open water upwind (effective fetch)</h3><p class="muted small">How far the wind can blow over the Kattegat before reaching this spot, by direction – computed from the coastline. Long bars = big windswell potential. Outlined wedge = this spot's swell window.</p><div id="rose"></div></div>
-   <div class="card"><h3>Historic base rate</h3><p class="muted small">Share of daylight hours with surfable conditions: 5 years of ERA5 wind run through the Kattegat model and this spot's rules${CLIM?` (${CLIM.range})`:""}.</p><div id="climChart">${cl?"":"<p class='muted'>Loading…</p>"}</div>
+   <div class="card"><h3>Open water upwind (fetch)</h3><div id="rose"></div></div>
+   <div class="card"><h3>Historic base rate</h3><p class="muted small">Share of daylight hours ≥ Fair: 5 years of ERA5 wind through the Kattegat model${CLIM?` (${CLIM.range})`:""}.</p><div id="climChart">${cl?"":"<p class='muted'>Loading…</p>"}</div>
      ${cl?`<p class="small">Typical ${new Intl.DateTimeFormat("en-GB",{month:"long"}).format(new Date(2026,mNow,1))}: <b>${Math.round(cl[mNow].pct*100)}%</b> of daylight hours, ~<b>${fmt(cl[mNow].days,1)}</b> good days.</p>`:""}</div>
    ${mySess.length?`<div class="card"><h3>Your sessions here</h3>${sessList(mySess.slice(0,5))}</div>`:""}`;
   $("#view").querySelectorAll(".dtab").forEach(b=>b.onclick=()=>{ VIEW.day=b.dataset.d; VIEW.sel=null; renderSpot(id); });
-  $("#view").querySelectorAll("tr[data-t]").forEach(r=>r.onclick=()=>{ VIEW.sel=+r.dataset.t; renderSpot(id); });
+  $("#view").querySelectorAll("tr[data-t]").forEach(r=>r.onclick=()=>{ VIEW.sel=+r.dataset.t; VIEW.day=dayKey(+r.dataset.t); renderSpot(id); });
   $("#night").onchange=e=>{ VIEW.night=e.target.checked; renderSpot(id); };
-  drawDayChart(S, dh, sel, id); drawRose(s); if(cl) drawClim(cl, mNow);
+  drawDayChart(S, dh, sel, id); drawPChart(S, sel, id); drawRose(s); if(cl) drawClim(cl, mNow); drawSpotMap(S); bindDeletes();
+}
+
+function drawPChart(S, sel, id){
+  const host=$("#pChart"), W=Math.max(300,host.clientWidth), H=100, PL=30, PT=8;
+  const hs=S.hours.filter(h=>!h.past&&h.day); if(!hs.length){ host.innerHTML=""; return; }
+  const n=hs.length, gap=4, days=[...new Set(hs.map(h=>dayKey(h.t)))], slotW=(W-PL-gap*(days.length-1))/n;
+  let g=""; [0,0.5,1].forEach(v=>{ const y=PT+(1-v)*H; g+=`<line x1="${PL}" x2="${W}" y1="${y}" y2="${y}" class="grid"/><text x="${PL-4}" y="${y+3}" text-anchor="end" class="ax">${v*100}%</text>`; });
+  let x=PL, prev=null;
+  hs.forEach(h=>{ const dk=dayKey(h.t); if(prev&&dk!==prev) x+=gap; if(dk!==prev) g+=`<text x="${x}" y="${PT+H+13}" class="ax b">${tWd(h.t)}</text>`; prev=dk;
+    const i=ratingIdx(h.q), bh=Math.max(1,(h.p||0)*H);
+    g+=`<rect x="${x+0.5}" y="${PT+H-bh}" width="${Math.max(1,slotW-1)}" height="${bh}" rx="1.5" fill="${i>=0?RATINGS[i].c:"#cfd3d8"}"><title>${tDay(h.t)} ${tHr(h.t)} · ${pct(h.p)} · ${i>=0?RATINGS[i].t:""}</title></rect>`;
+    if(h.t===sel.t) g+=`<rect x="${x-0.5}" y="${PT-2}" width="${slotW+1}" height="${H+4}" fill="none" stroke="#0b1f33" stroke-width="1.5"/>`;
+    g+=`<rect class="hit" data-t="${h.t}" x="${x}" y="0" width="${slotW}" height="${H+PT}" fill="transparent"/>`;
+    x+=slotW; });
+  g+=`<line x1="${PL}" x2="${W}" y1="${PT+H*0.6}" y2="${PT+H*0.6}" stroke="#0b1f33" stroke-dasharray="3 3" opacity=".5"/><text x="${W-2}" y="${PT+H*0.6-3}" text-anchor="end" class="ax">Go ≥ 60%</text>`;
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H+PT+18}" width="100%" height="${H+PT+18}" role="img" aria-label="Chance of a good session by daylight hour">${g}</svg><p class="small muted">Daylight hours only; bar colour = rating, height = chance of a ≥ Fair session.</p>`;
+  host.querySelectorAll(".hit").forEach(r=>r.addEventListener("click",()=>{ VIEW.sel=+r.dataset.t; VIEW.day=dayKey(+r.dataset.t); renderSpot(id); }));
 }
 
 function drawDayChart(S, hs, sel, id){
-  const host=$("#dayChart"), W=Math.max(300,host.clientWidth), H=150, PL=30, PR=6, PT=18;
+  const host=$("#dayChart"), W=Math.max(300,host.clientWidth), H=140, PL=30, PR=6, PT=18;
   if(!hs.length){ host.innerHTML=""; return; }
   const max=Math.max(1, Math.ceil(Math.max(...hs.map(h=>h.hi||0))*2)/2);
   const bw=(W-PL-PR)/hs.length, y=v=>PT+(H-PT)-clamp(v/max,0,1)*(H-PT);
   let g=""; for(let v=0;v<=max+1e-9;v+=0.5){ g+=`<line x1="${PL}" x2="${W-PR}" y1="${y(v)}" y2="${y(v)}" class="grid"/><text x="${PL-5}" y="${y(v)+3}" text-anchor="end" class="ax">${v}</text>`; }
   hs.forEach((h,i)=>{ const x=PL+i*bw+1, w=Math.max(2,bw-2), ri=ratingIdx(h.q), c=ri>=0?RATINGS[ri].c:"#cfd3d8";
     if(h.lo!=null){ const top=y(h.hi), mid=y(Math.max(0,(h.P?h.P.hb:h.lo)));
-      g+=`<rect x="${x}" y="${top}" width="${w}" height="${Math.max(1,y(0)-top)}" rx="${Math.min(4,w/2)}" fill="${c}" opacity="${h.past?0.35:0.35}"/>`;
+      g+=`<rect x="${x}" y="${top}" width="${w}" height="${Math.max(1,y(0)-top)}" rx="${Math.min(4,w/2)}" fill="${c}" opacity="0.3"/>`;
       g+=`<rect x="${x}" y="${mid}" width="${w}" height="${Math.max(1,y(0)-mid)}" rx="${Math.min(4,w/2)}" fill="${c}" opacity="${h.past?0.5:1}"/>`; }
     if(h.t===sel.t) g+=`<rect x="${x-1}" y="${PT-4}" width="${w+2}" height="${H-PT+4}" fill="none" stroke="#0b1f33" stroke-width="1.5" rx="3"/>`;
     if(i%2===0||hs.length<10) g+=`<text x="${x+w/2}" y="${H+13}" text-anchor="middle" class="ax">${hourOf(h.t)}</text>`;
     g+=`<rect class="hit" data-i="${i}" x="${PL+i*bw}" y="0" width="${bw}" height="${H+16}" fill="transparent"/>`; });
-  host.innerHTML=`<svg viewBox="0 0 ${W} ${H+18}" width="100%" height="${H+18}" role="img" aria-label="Hourly surf height">${g}<text x="${PL}" y="10" class="ax">m (solid = Kattegat model, faint = model spread)</text></svg>`;
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H+18}" width="100%" height="${H+18}" role="img" aria-label="Hourly surf height">${g}<text x="${PL}" y="10" class="ax">surf height m (solid = Kattegat model · faint = model spread)</text></svg>
+    <div class="legend-r small">${RATINGS.map(r=>`<span><i style="background:${r.c}"></i>${r.t}</span>`).join("")}</div>`;
   host.querySelectorAll(".hit").forEach(r=>{ const h=hs[+r.dataset.i];
-    r.addEventListener("mouseenter",e=>{ const b=r.getBoundingClientRect(); showTip(b.left+b.width/2,b.top+20,`<b>${tHr(h.t)}</b> ${chip(h.q)}<br>${rangeTxt(h)} m · ${sizeWords(h.P&&h.P.hb)}<br>${h.P?compass(h.P.wd)+" "+fmt(h.P.ws,0)+" m/s "+windLabel(h.P.rel,h.P.ws):""}<br>${h.p!=null?Math.round(h.p*100)+"% chance":""}`); });
-    r.addEventListener("mouseleave",hideTip);
     r.addEventListener("click",()=>{ hideTip(); VIEW.sel=h.t; renderSpot(id); }); });
 }
 function drawRose(s){
-  const tab=FETCH[s.id], R=110, cx=130, cy=130; let g="";
+  const tab=FETCH[s.id], R=100, cx=120, cy=120; let g="";
   [50,100,150,200,250].forEach(km=>{ g+=`<circle cx="${cx}" cy="${cy}" r="${km/250*R}" class="grid" fill="none"/>`; });
-  g+=`<text x="${cx+3}" y="${cy-R*100/250-2}" class="ax">100 km</text><text x="${cx+3}" y="${cy-R+8}" class="ax">250</text>`;
+  g+=`<text x="${cx+3}" y="${cy-R*100/250-2}" class="ax">100 km</text>`;
   const a0=(s.bestSwell-s.swellHalf), a1=(s.bestSwell+s.swellHalf), P=(a,r)=>[cx+Math.sin(a*RAD)*r, cy-Math.cos(a*RAD)*r];
   const [x0,y0]=P(a0,R), [x1,y1]=P(a1,R);
   g+=`<path d="M${cx},${cy} L${x0},${y0} A${R},${R} 0 ${a1-a0>180?1:0} 1 ${x1},${y1} Z" fill="#e8f2fd" stroke="#0e5fd8" stroke-dasharray="4 3"/>`;
@@ -465,8 +621,8 @@ function drawRose(s){
   ["N","E","S","W"].forEach((l,i)=>{ const [x,y]=P(i*90,R+12); g+=`<text x="${x}" y="${y+4}" text-anchor="middle" class="ax b">${l}</text>`; });
   const [bx,by]=P(s.facing,R*0.35); g+=`<line x1="${cx}" y1="${cy}" x2="${bx}" y2="${by}" stroke="#0b1f33" stroke-width="2"/><circle cx="${cx}" cy="${cy}" r="3" fill="#0b1f33"/>`;
   const top=[...Array(36)].map((_,i)=>[i*10,K.effFetch(tab,i*10)]).sort((a,b)=>b[1]-a[1])[0];
-  $("#rose").innerHTML=`<div class="rose"><svg viewBox="0 0 260 260" width="260" height="260" role="img" aria-label="Fetch rose">${g}</svg>
-    <div class="small"><p>Longest fetch: <b>${compass(top[0])} · ${Math.round(top[1])} km</b></p><p>Beach faces <b>${compass(s.facing)}</b> (dark line).</p><p>Wind from directions with &lt;20 km fetch makes no surf here – those are your offshore directions.</p></div></div>`;
+  $("#rose").innerHTML=`<div class="rose"><svg viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="Fetch rose">${g}</svg>
+    <div class="small"><p>How far wind can blow over open water before reaching the beach. Longest: <b>${compass(top[0])} · ${Math.round(top[1])} km</b>.</p><p>Dark line = beach faces <b>${compass(s.facing)}</b>. Dashed wedge = swell window.</p></div></div>`;
 }
 function drawClim(cl, mNow){
   const W=Math.max(280,$("#climChart").clientWidth), H=90, PL=34, bw=(W-PL)/12, max=Math.max(0.05,Math.ceil(Math.max(...cl.map(c=>c.pct))*20)/20);
@@ -474,6 +630,30 @@ function drawClim(cl, mNow){
   "JFMAMJJASOND".split("").forEach((m,i)=>{ const h=cl[i].pct/max*H, x=PL+i*bw+3;
     g+=`<rect x="${x}" y="${H-h+8}" width="${bw-6}" height="${Math.max(0,h)}" rx="3" fill="${i===mNow?"#184f95":"#86b6ef"}"><title>${Math.round(cl[i].pct*100)}% · ~${fmt(cl[i].days,1)} good days</title></rect><text x="${x+(bw-6)/2}" y="${H+21}" text-anchor="middle" class="ax">${m}</text>`; });
   $("#climChart").innerHTML=`<svg viewBox="0 0 ${W} ${H+24}" width="100%" height="${H+24}">${g}</svg>`;
+}
+
+/* ============================ RATINGS EXPLAINED ============================ */
+const RATING_DEF = [
+  ["Flat","< 0.15","No rideable waves. Stay home."],
+  ["Poor","0.15–0.30","Tiny or blown out. Not worth the drive."],
+  ["Poor–Fair","0.30–0.45","Rideable on a longboard/foamie, usually messy. Only if you're nearby."],
+  ["Fair","0.45–0.62","Surfable, worth the drive if keen. This is the line for a “good session”."],
+  ["Good","0.62–0.80","Waist–chest+ with decent wind. Go."],
+  ["Firing","≥ 0.80","As good as the Kattegat gets: chest–head high, 5–6 s+, offshore/side-off or glassy. A handful of days a year."]
+];
+function ratingsCard(){
+  return `<div class="card" id="ratings"><h3>How ratings work</h3>
+   <p class="small">Every hour gets a quality score <b>q</b> from 0 to 1:</p>
+   <p class="formula">q = Size × Wind × Period</p>
+   <ul class="small">
+    <li><b>Size</b> – estimated breaking height at the beach vs. the spot's minimum (0.4–0.5 m). Full marks 0.9–1.8 m; drops when tiny or storm-sized (&gt; 2.6 m).</li>
+    <li><b>Wind</b> – local DMI wind vs. the beach's orientation. Offshore/side-off or &lt; 2.5 m/s = 100%; cross-shore 45–85%; onshore 15–70% depending on strength. Never zero, because Kattegat waves only exist while it blows.</li>
+    <li><b>Period</b> – 5–7 s organised windswell scores well, &lt; 4 s chop poorly.</li>
+   </ul>
+   <table class="cmp">${RATING_DEF.map(([n,r,d])=>{const R=RATINGS.find(x=>x.t===n);return `<tr><td><span class="chip" style="--c:${R.c}">${n}</span></td><td class="small">q ${r}</td><td class="small">${d}</td></tr>`}).join("")}</table>
+   <h3 style="margin-top:14px">What the % means</h3>
+   <p class="small"><b>Chance of a good session</b> = probability the hour rates <b>Fair or better</b>. It combines three runs – Kattegat model with DMI wind (50%), with ECMWF wind (20%) and DWD's EWAM wind-sea (30%) – and leans on the spot's 5-year history the further ahead you look. <b>Go</b> ≥ 60% · <b>Worth a look</b> 40–60% · <b>Long shot</b> 20–40%.</p>
+   <p class="small"><b>Slots</b> = the best daylight block per day per spot (up to 4 h). Drive plan = leave Copenhagen drive time + 15 min before the slot (parking, wetsuit).</p></div>`;
 }
 
 /* ============================ LOG ============================ */
@@ -526,6 +706,7 @@ function bindDeletes(){ document.querySelectorAll("[data-del]").forEach(b=>b.onc
 function renderModel(){
   const c=CAL;
   $("#view").innerHTML=`<div class="page-h"><h1>Model & learning</h1><p class="muted">How Nordkyst forecasts Kattegat windswell, and what it has learned from you.</p></div>
+  ${ratingsCard()}
   <div class="card"><h3>What the model has learned</h3>
    <p class="small muted">Each logged session compares your rating and wave size with what the model predicted for that hour. Corrections are shrunk toward "no change" until there are enough sessions.</p>
    <table class="mc"><tr><th>Spot</th><th>Sessions</th><th>Size factor</th><th>Rating shift</th></tr>
