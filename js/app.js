@@ -272,6 +272,10 @@ function buildModel(W, Wv, clim, cal, Ws){
       const h=series(loc,"wind_wave_height"); if(h&&h.some(v=>v!=null)){ const map={}; loc.hourly.time.forEach((t,k)=>map[t]=k);
         ew={map,h,T:series(loc,"wind_wave_period"),d:series(loc,"wind_wave_direction"),sst:series(loc,"sea_surface_temperature"),sl:series(loc,"sea_level_height_msl")}; break; }
     }
+    // auto-tune: compare each Kattegat-model run with EWAM over the last 72 h (short-lead, closest to an analysis we can get)
+    const tune={};
+    Object.entries(runs).forEach(([key,r])=>tune[key]=autoTune(s.id,key,times,r.sea,ew,now));
+    Object.entries(runs).forEach(([key,r])=>{ const f=tune[key].f; if(f!==1) r.sea=r.sea.map(o=>o.Hs==null?o:{...o,Hs:o.Hs*f}); });
     let seaMap=null; const SL=Ws&&Ws[si];
     if(SL&&SL.hourly){ seaMap={}; SL.hourly.time.forEach((t,k)=>seaMap[t]=k); }
     const gDmi=series(beach,"wind_gusts_10m","dmi_seamless"), tDmi=series(beach,"temperature_2m","dmi_seamless");
@@ -305,10 +309,36 @@ function buildModel(W, Wv, clim, cal, Ws){
       const prev=hours.slice(Math.max(0,i-6),i).filter(x=>x.P);
       if(prev.length>=4){ const po=prev.reduce((a,x)=>a+on(x),0)/prev.length; h.cleanup=po>6&&on(h)<po-3; }
     });
-    return {spot:s, hours, cal:C, hasEwam:!!ew};
+    return {spot:s, hours, cal:C, hasEwam:!!ew, tune};
   });
   return {spots, now};
 }
+/* ============================ auto-tune vs EWAM (no sessions needed) ============================ */
+const AUTO_KEY="nk_auto_v1"; let AUTO=load(AUTO_KEY,{});
+const TUNE_LIM=[Math.log(0.65),Math.log(1.5)], TUNE_MEM=240, TUNE_SHRINK=24;
+function autoTune(id,key,times,sea,ew,now){
+  const prior=(AUTO[id]&&AUTO[id][key])||null;
+  let sk=0,se=0,n=0,e2raw=0,pairs=[];
+  if(ew) times.forEach((t,i)=>{ if(t>now-1800||t<now-72*3600) return; const k=ew.map[t]; if(k==null) return;
+    const m=sea[i]&&sea[i].Hs, o=ew.h[k]; if(m==null||o==null||(m<0.2&&o<0.2)) return;
+    sk+=m; se+=o; n++; e2raw+=(m-o)**2; pairs.push([m,o]); });
+  const cur = n>=6&&sk>0 ? Math.log(se/sk) : null;
+  let lf=prior?prior.lf:0, w=prior?prior.w:0, at=prior?prior.at:0;
+  const dtH=prior?(now-prior.at)/3600:72;
+  if(cur!=null && dtH>=1){ const a=prior?clamp(dtH/168,0.05,1):1; lf=lf+a*(clamp(cur,...TUNE_LIM)-lf); w=Math.min(TUNE_MEM,w+Math.min(dtH,72)); at=now; }
+  const eff=clamp(lf*w/(w+TUNE_SHRINK),...TUNE_LIM), f=Math.exp(eff);
+  const rmse=x=>n?Math.sqrt(x/n):null;
+  return {f:Math.round(f*1000)/1000, lf, w, at, n, raw: cur!=null?Math.exp(cur):null,
+          rmseRaw:rmse(e2raw), rmseTuned:rmse(pairs.reduce((a,[m,o])=>a+(m*f-o)**2,0))};
+}
+function saveAutoTune(M){
+  M.spots.forEach(S=>{ if(!S.tune) return; AUTO[S.spot.id]=AUTO[S.spot.id]||{};
+    Object.entries(S.tune).forEach(([k,t])=>{ if(t.at) AUTO[S.spot.id][k]={lf:t.lf,w:t.w,at:t.at}; }); });
+  store(AUTO_KEY,AUTO);
+}
+function tuneTxt(t){ if(!t||t.w===0) return "not enough EWAM overlap yet"; const pct=Math.round((t.f-1)*100);
+  return Math.abs(pct)<3?"no correction needed":`sizes ${pct>0?"raised":"lowered"} ${Math.abs(pct)}%`; }
+
 function windows(M){
   const out=[];
   M.spots.forEach(S=>{ let cur=null; const flush=()=>{ if(cur&&cur.h.length>=2) out.push(cur); cur=null; };
@@ -835,6 +865,7 @@ function renderSpot(id){
      <table class="mc"><tr><th></th><th>Windswell</th><th>Surf</th><th>Rating</th></tr>
      ${[["kwm_dmi","Kattegat model · DMI wind"],["kwm_ecmwf","Kattegat model · ECMWF wind"],["ewam","DWD EWAM wind-sea"]].map(([k,l])=>{const x=sel.scen.find(y=>y.key===k);return `<tr><td>${l}</td><td>${x?fmt(x.Hs)+" m · "+fmt(x.T)+" s "+compass(x.dir):"n/a"}</td><td>${x?fmt(x.hb):"–"}</td><td>${x?chip(x.q):"–"}</td></tr>`}).join("")}</table>
      <p class="small muted">Agreement between the three runs raises the chance; disagreement lowers it.</p>
+     ${S.tune&&S.tune.kwm_dmi?`<p class="small"><b>Auto-tune:</b> ${tuneTxt(S.tune.kwm_dmi)} (Kattegat model vs EWAM, last 72 h${S.tune.kwm_dmi.rmseRaw!=null?`, error ${fmt(S.tune.kwm_dmi.rmseRaw,2)} → ${fmt(S.tune.kwm_dmi.rmseTuned,2)} m`:""}).</p>`:""}
      ${C&&C.n?`<p class="small">Calibrated from your ${C.n} session${C.n>1?"s":""}: size ×${fmt(C.size,2)}, rating ${C.qBias>=0?"+":""}${fmt(C.qBias*100,0)} pts.</p>`:""}
      ${sims.length?`<p class="small"><b>${sims.length} similar logged session${sims.length>1?"s":""}</b> here averaged <b>${RATINGS[Math.round(sims.reduce((a,x)=>a+x.rating,0)/sims.length)].t}</b>.</p>`:""}</div>
    <a class="btn primary block" href="#log-${s.id}">＋ Log a session at ${esc(s.name)}</a>
@@ -998,6 +1029,10 @@ function renderModel(){
   $("#view").innerHTML=`<div class="page-h"><h1>Model & learning</h1><p class="muted">How Nordkyst forecasts Kattegat windswell, and what it has learned from you.</p></div>
   ${SK.skillBar(SKILL_LVL,"sk")}
   ${ratingsCard()}
+  <div class="card"><h3>Automatic tuning (no sessions needed)</h3>
+   <p class="small muted">Every time the app loads, the Kattegat model's last 72 h at each spot is compared with DWD's EWAM wave model for the same hours (short-range runs, the closest thing to a measurement in the Kattegat – there is no live wave buoy there). A steady over- or under-shoot becomes a size correction, remembered on this phone with roughly a one-week memory and capped at −35% / +50%. Your logged sessions still come on top of this.</p>
+   ${STATE?`<table class="mc"><tr><th>Spot</th><th>Correction</th><th>Last 72 h error</th></tr>
+   ${STATE.spots.map(S=>{const t=S.tune&&S.tune.kwm_dmi;return `<tr><td>${esc(S.spot.name)}</td><td>${t&&t.w?"×"+fmt(t.f,2):"–"}</td><td>${t&&t.rmseRaw!=null?fmt(t.rmseRaw,2)+" → "+fmt(t.rmseTuned,2)+" m":"–"}</td></tr>`}).join("")}</table>`:"<p class='muted small'>Loads with the forecast.</p>"}</div>
   <div class="card"><h3>What the model has learned</h3>
    <p class="small muted">Each logged session compares your rating and wave size with what the model predicted for that hour. Corrections are shrunk toward "no change" until there are enough sessions.</p>
    <table class="mc"><tr><th>Spot</th><th>Sessions</th><th>Size factor</th><th>Rating shift</th></tr>
@@ -1012,6 +1047,7 @@ function renderModel(){
     <li><b>Wave growth hour by hour.</b> Fetch- and duration-limited growth (Coastal Engineering Manual, JONSWAP-based). A sea that has blown for 6 h is limited by duration; after ~12 h of NW the long fetch becomes the limit. When the wind swings &gt;40° a new sea starts and the old one decays at a rate set by fetch and period.</li>
     <li><b>At the beach.</b> Windswell × direction factor (spot window) × exposure × shoaling → surf height. Quality = size × wind (local DMI wind vs. beach orientation) × period.</li>
     <li><b>Chance.</b> Weighted agreement of three runs – Kattegat model with DMI wind (50%), with ECMWF wind (20%), DWD's EWAM wind-sea (30%) – blended with the spot's historic rate as lead time grows.</li>
+    <li><b>Auto-tune</b> nudges sizes toward EWAM's recent hindcast per spot.</li>
     <li><b>Your sessions</b> scale size and shift ratings per spot.</li>
    </ol>
    <p class="small">Check against EWAM, NW gale 13–15 Nov 2026 off Gilleleje: Kattegat model 2.0 m / 5.4 s vs EWAM 1.9–2.0 m / 5.1 s; RMSE 0.33 m over 60 h.</p></div>
@@ -1060,7 +1096,7 @@ async function boot(){
     setStatus("Offline","err"); return;
   }
   if(!err) store("nk_last_v3",{W,Wv,Ws,at:Date.now()});
-  RAW={W,Wv,Ws}; rebuild(); if(!err) trackRuns(STATE); route();
+  RAW={W,Wv,Ws}; rebuild(); if(!err){ trackRuns(STATE); saveAutoTune(STATE); } route();
   const at=err&&cached?new Date(cached.at):new Date();
   setStatus(`${err?"Offline · data from ":"Updated "}${at.toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"})}${Wv?"":" · EWAM unavailable"}`, err?"warn":"");
   try{ CLIM=await fetchClimate(); rebuild(); if(location.hash.startsWith("#spot-")) route(); }catch(e){ console.warn("climate",e); }
