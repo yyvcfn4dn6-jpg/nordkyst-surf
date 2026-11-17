@@ -53,13 +53,18 @@ main{max-width:760px;margin:0 auto;padding:12px 12px calc(84px + var(--safe-b))}
 .list{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(11,31,51,.06)}
 .row{display:flex;align-items:stretch;border-bottom:1px solid var(--line);min-height:84px}
 .row:last-child{border-bottom:0}.row:active{background:#f6f8fa}
-.stripe{width:6px;flex:none}
-.row-main{flex:1;padding:10px 12px;min-width:0}
+.stripe{width:6px;flex:none;position:absolute;left:0;top:0;bottom:0}
+.row-main{flex:1;padding:10px 12px 8px 18px;min-width:0}
 .row-top{display:flex;justify-content:space-between;gap:8px}.row-top b{font-size:15.5px}
 .row-now{display:flex;align-items:center;gap:8px;margin-top:3px;flex-wrap:wrap}
 .surf{font-weight:750;font-size:15px}.wind{font-size:12.5px;color:var(--ink2)}
-.strip{display:flex;gap:3px;margin-top:7px}
-.seg{flex:1;display:flex;flex-direction:column;gap:2px;max-width:60px}.seg i{height:6px;border-radius:3px}.seg em{font-style:normal;font-size:10px;color:var(--ink3)}
+.row{flex-wrap:wrap;position:relative}.row>.strip{flex-basis:100%;padding:0 10px 10px 18px;margin-top:0}
+.strip{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:9px}
+.seg{display:flex;flex-direction:column;align-items:flex-start;gap:1px;background:#f4f6f8;border-radius:9px;padding:5px 6px 6px;min-width:0}
+.seg i{height:7px;width:100%;border-radius:4px;margin:2px 0 3px}
+.seg em{font-style:normal;font-size:11px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;line-height:1.3}
+.seg em.dn{font-weight:700;color:var(--ink);font-size:12px}.seg em.pc{font-size:15px;font-weight:800;color:var(--navy2)}
+.seg em.wh{font-size:12px}.seg em.rt{font-size:10.5px}.seg em.wd .arr{fill:var(--ink2)}.seg em.hr{font-size:10px;color:var(--ink3)}
 .row-next{width:78px;flex:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;padding-right:12px;text-align:right}
 .row-next b{font-size:18px;color:var(--navy2)}.row-next span{font-size:11.5px;color:var(--ink2)}
 .legend-r{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11.5px;color:var(--ink2);margin:8px 2px}.legend-r i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
@@ -182,6 +187,8 @@ table.hours.slotsT{min-width:440px}
 .hzdays{display:flex;flex-wrap:wrap;gap:6px 14px}.hzd{display:flex;align-items:center;gap:5px;font-size:12.5px}
 .sfl{margin-top:8px}
 .seg em.wh{color:var(--ink);font-weight:600}
+.heroes{display:grid;gap:10px}.heroes .hero{margin:0}
+.slot-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
 .hero .hzc,.now-card .hzc{background:rgba(255,255,255,.9)}
 table.hours{min-width:600px}
 /* maturity */

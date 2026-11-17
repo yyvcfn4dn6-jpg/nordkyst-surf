@@ -367,8 +367,7 @@ function spotSlots(S){
 }
 function allSlots(M){ return M.spots.flatMap(spotSlots).sort((a,b)=>b.pPeak-a.pPeak); }
 /* top 3 distinct options: skip slots overlapping in time with one already picked */
-function top3(slots){ const out=[]; for(const s of slots){ if(out.length>=3) break; if(s.pPeak<0.12) break;
-  if(out.some(o=>s.start<o.end&&o.start<s.end)) continue; out.push(s); } return out; }
+function top3(slots){ return slots.filter(s=>s.pPeak>=0.05).slice(0,3); }
 function bindSkill(){ document.querySelectorAll('input[name="sk"]').forEach(r=>r.onchange=async()=>{ SKILL_LVL=+r.value; store("nk_skill",SKILL_LVL); CLIM=load("nk_clim_v4_"+SKILL_LVL); if(RAW) rebuild(); route();
   try{ CLIM=await fetchClimate(); rebuild(); route(); }catch(e){} }); }
 function topCard(sl, i){ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak), p=plan(s, sl.start, sl.end);
@@ -655,21 +654,20 @@ function maturityCard(S,h){
 function renderHome(){
   const M=STATE, el=$("#view"), slots=allSlots(M), tops=top3(slots), top=tops[0]||slots[0];
   const spotBest=S=>slots.find(x=>x.S===S);
-  let hero="";
-  if(top){
-    const s=top.S.spot, P=top.peakH.P, T=tier(top.pPeak);
-    hero=`<a class="hero" href="#spot-${s.id}" data-t="${top.peakH.t}">
-      <div class="hero-k">#1 · best slot for you <span class="tier ${T.c}">${T.t}</span></div>
-      <div class="hero-row"><div><div class="hero-spot">${esc(s.name)}</div><div class="hero-when">${tDay(top.start)} · ${tHr(top.start)}–${tHr(top.end)}</div></div>
-      <div class="hero-p"><b>${pct(top.pPeak)}</b><span>chance of a<br>good session</span></div></div>
-      <div class="hero-surf"><span class="big">${rangeTxt(top.peakH)}<small>m</small></span><span>${sizeWords(P.hb)}<br>${chip(top.peakH.q)} ${SK.skillChip(P.req, SKILL_LVL)}</span></div>
+  const heroCard=(sl,r)=>{ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak);
+    return `<a class="hero" href="#spot-${s.id}" data-t="${sl.peakH.t}">
+      <div class="hero-k">#${r} ${r===1?"· best slot for you ":""}<span class="tier ${T.c}">${T.t}</span></div>
+      <div class="hero-row"><div><div class="hero-spot">${esc(s.name)}</div><div class="hero-when">${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</div></div>
+      <div class="hero-p"><b>${pct(sl.pPeak)}</b><span>chance of a<br>good session</span></div></div>
+      <div class="hero-surf"><span class="big">${rangeTxt(sl.peakH)}<small>m</small></span><span>${sizeWords(P.hb)}<br>${chip(sl.peakH.q)} ${SK.skillChip(P.req, SKILL_LVL)}</span></div>
       <div class="hero-meta">${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s · ${windLabel(P.rel,P.ws)} · ${fmt(P.Hs)} m @ ${fmt(P.T)} s from ${compass(P.dir)}</div>
-      ${planHtml(s, top)}<div class="sfl">${matLine(top.S, top.peakH)}</div>${gearHtml(top.S, top.peakH, true)}</a>`;
-  }
-  const list = slots.slice(0,6).map((sl,i)=>{ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak);
-    return `<details class="slot" ${i===0?"open":""}><summary>
+      ${planHtml(s, sl)}<div class="sfl">${hzChip(safety(sl.S,sl.peakH).lvl,"Safety:")} ${matLine(sl.S, sl.peakH)}</div>${gearHtml(sl.S, sl.peakH, true)}</a>`; };
+  const heroes=tops.map((sl,i)=>heroCard(sl,i+1)).join("");
+  const rest=slots.slice(tops.length).filter(x=>x.pPeak>=0.03).slice(0,10);
+  const list = rest.map((sl,i)=>{ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak), pl=plan(s,sl.start,sl.end), mt=maturity(sl.S,sl.peakH);
+    return `<details class="slot"><summary>
       <span class="slot-p"><b>${pct(sl.pPeak)}</b><span class="tier ${T.c}">${T.t}</span></span>
-      <span class="slot-main"><b>${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span></span>
+      <span class="slot-main"><b>#${i+tops.length+1} ${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span><span class="small">${arrow(P.wd,12)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s ${windLabel(P.rel,P.ws)} · ${fmt(P.Hs)} m @ ${fmt(P.T)} s · leave ${tHr(pl.leave)}</span><span class="slot-tags">${hzChip(safety(sl.S,sl.peakH).lvl,"Safety:")}${matChip(mt,"Forecast:")}</span></span>
       <span class="slot-r">${chip(sl.peakH.q)}<span>${rangeTxt(sl.peakH)} m waves</span><span class="small muted">${P.req!=null?SK.SKILLS[P.req].t:""} · ${HZ_LV[safety(sl.S,sl.peakH).lvl].t.toLowerCase()}</span></span></summary>
       ${planHtml(s, sl)}<div class="sfl">${safetyLine(sl.S, sl.peakH)}</div><div class="sfl">${matLine(sl.S, sl.peakH)}</div>${gearHtml(sl.S, sl.peakH, true)}${whyHtml(sl.S, sl.peakH)}${locHtml(s)}
       <a class="btn small-btn" href="#spot-${s.id}" data-t="${sl.peakH.t}">Open ${esc(s.name)} forecast →</a></details>`; }).join("");
@@ -678,21 +676,23 @@ function renderHome(){
     const s=S.spot, nowH=S.hours.find(h=>!h.past)||S.hours[0], P=nowH.P, b=spotBest(S);
     const strip=days.map(dk=>{ const hs=S.hours.filter(h=>dayKey(h.t)===dk&&h.day&&!h.past&&h.p!=null);
       const best=hs.reduce((a,h)=>!a||h.p>a.p?h:a,null); const i=best?ratingIdx(best.q):-1;
-      return `<span class="seg"><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i><em>${best?tWd(best.t).slice(0,2)+" "+pct(best.p):""}</em><em class="wh">${best?rangeTxt(best)+" m":""}</em></span>`; }).join("");
+      const bp=best&&best.P;
+      return `<span class="seg"><em class="dn">${tWd(hs.length?hs[0].t:Date.parse(dk)/1000)}</em><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i><em class="pc">${best?pct(best.p):"–"}</em><em class="wh">${best?rangeTxt(best)+" m":""}</em><em class="rt">${best?RATINGS[Math.max(0,i)].t:""}</em><em class="wd">${bp?arrow(bp.wd,10)+" "+compass(bp.wd)+" "+fmt(bp.ws,0):""}</em><em class="hr">${best?tHr(best.t):""}</em></span>`; }).join("");
     const ri=ratingIdx(nowH.q);
     return `<a class="row" href="#spot-${s.id}">
       <span class="stripe" style="background:${ri>=0?RATINGS[ri].c:"#cfd3d8"}"></span>
       <div class="row-main"><div class="row-top"><b>${esc(s.name)}</b><span class="muted">${s.driveMin} min · faces ${compass(s.facing)}</span></div>
         <div class="row-now"><span class="muted small">Waves now</span><span class="surf">${rangeTxt(nowH)} m</span>${chip(nowH.q)}${P&&P.req!=null?SK.skillChip(P.req,SKILL_LVL):""}${P?hzChip(safety(S,nowH).lvl):""}<span class="wind">${P?arrow(P.wd,13)+" "+fmt(P.ws,0)+" "+windLabel(P.rel,P.ws):""}</span></div>
-        <div class="strip">${strip}</div></div>
-      <div class="row-next">${b?`<b>${pct(b.pPeak)}</b><span>${tWd(b.start)} ${tHr(b.start)}</span>`:`<span class="muted">–</span>`}</div></a>`;
+</div>
+      <div class="row-next">${b?`<b>${pct(b.pPeak)}</b><span>best · ${tWd(b.start)} ${tHr(b.start)}</span>`:`<span class="muted">–</span>`}</div>
+      <div class="strip" style="grid-template-columns:repeat(${days.length},1fr)">${strip}</div></a>`;
   }).join("");
   // compare all spots at the top slot's peak hour
   let cmp="";
   if(top){
     const t=top.peakH.t, g=top.peakH.gen;
     const r=M.spots.map(S=>({S,h:S.hours.find(h=>h.t===t)})).filter(x=>x.h).sort((a,b)=>(b.h.p||0)-(a.h.p||0));
-    cmp=`<div class="card"><h3>Why the pick differs by spot</h3>
+    cmp=`<div class="card"><h3>Why the #1 pick differs by spot</h3>
       <p class="small muted">All spots at the best slot (${tDay(t)} ${tHr(t)}). Same weather – ${g?`${compass(g.dir)} ${fmt(g.U,0)} m/s over the Kattegat`:"same wind"} – but each beach faces a different way and sees a different amount of open water.</p>
       <table class="cmp">${r.map(({S,h})=>`<tr><td><a href="#spot-${S.spot.id}" data-t="${t}"><b>${esc(S.spot.name)}</b></a><br><span class="muted small">faces ${compass(S.spot.facing)}</span></td><td>${chip(h.q)}<br><b>${pct(h.p)}</b></td><td class="small">${reason(S,h)}</td></tr>`).join("")}</table></div>`;
   }
@@ -704,10 +704,9 @@ function renderHome(){
     <p class="small"><b>In short:</b> NW is the money direction – the longest open water (100–140 km) and it hits every spot. W builds surf from Liseleje to Gilleleje but misses Lynæs, Hornbæk and Ålsgårde. N works everywhere; NE is blocked by Sweden/Kullen. S–SE (and SW for the north coast) is offshore: no new surf, but it cleans up what a NW blow left behind.</p></div>`;
   el.innerHTML = `${SK.skillBar(SKILL_LVL,"sk")}
     <div class="sec-h"><h2>Top 3 for you</h2><span class="muted small">next 5 days · ${SK.SKILLS[SKILL_LVL].t}</span></div>
-    ${hero || `<div class="hero quiet"><div class="hero-spot">Nothing for your level</div></div>`}
-    <div class="tops">${tops.slice(1).map((sl,i)=>topCard(sl,i+1)).join("")}</div>
-    <div class="sec-h"><h2>All best slots</h2><span class="muted small">chance of ≥ Fair session</span></div>
-    <div class="slots">${list}</div>
+    <div class="heroes">${heroes || `<div class="hero quiet"><div class="hero-spot">Nothing for your level</div></div>`}</div>
+    <div class="sec-h"><h2>More slots</h2><span class="muted small">ranked #4 onward · tap for details</span></div>
+    <div class="slots">${list||`<p class="muted small">No other slots worth listing.</p>`}</div>
     <div class="sec-h"><h2>Map</h2><span class="muted small">tap a spot</span></div>
     <div class="mapbox" id="ovMap"></div>
     <div class="sec-h"><h2>Spots</h2><span class="muted small">now · day by day · best</span></div>
