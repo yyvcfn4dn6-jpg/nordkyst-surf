@@ -1,7 +1,7 @@
 /* Peniche service worker: app shell offline, forecast data network-first */
-const SHELL = "peniche-shell-v7";
+const SHELL = "peniche-shell-v8";
 const DATA = "peniche-data-v1";
-const FILES = ["./", "index.html", "js/psm.js?v=8", "../js/skill.js?v=8", "js/app.js?v=8", "manifest.webmanifest", "../icons/icon-192.png", "../icons/icon-512.png", "../icons/apple-touch-icon.png", "../vendor/leaflet/leaflet.js", "../vendor/leaflet/leaflet.css"];
+const FILES = ["./", "index.html", "js/psm.js?v=9", "../js/skill.js?v=9", "js/app.js?v=9", "manifest.webmanifest", "../icons/icon-192.png", "../icons/icon-512.png", "../icons/apple-touch-icon.png", "../vendor/leaflet/leaflet.js", "../vendor/leaflet/leaflet.css"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(SHELL).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

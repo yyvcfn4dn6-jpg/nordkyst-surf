@@ -219,7 +219,7 @@ function evalSpot(spot, comps, wind, tideX, M, cal){
 /* offshore wave components for one model at index k */
 function compsAt(Wv, m, k){
   const g=v=>{ const s=series(Wv,v,m); return s?s[k]:null; };
-  const out=[], pk=m==="meteofrance_wave"?1.12:1;   // MFWAM gives mean period → approx. peak period
+  const out=[], pk=m==="meteofrance_wave"?1.2:1;   // MFWAM gives mean period; ×1.2 matches ECMWF/GFS peak periods (checked Nov 2026)
   const H1=g("swell_wave_height");
   if(H1!=null){
     out.push({kind:"swell", H:H1, T:g("swell_wave_peak_period")??(g("swell_wave_period")*pk), dir:g("swell_wave_direction")});
@@ -934,7 +934,7 @@ function ratingsCard(){
    <p class="formula">q = Size × Wind × Period × Sea × Tide × Skill</p>
    <ul class="small">
     <li><b>Size</b> – breaking height at the beach vs. the spot's minimum and <b>your maximum</b>. Full marks from ~70% of your max up to your max; above it the score drops fast (−70% at 1.3× your max). Waves over 1.15× your max are flagged <b>Too big for you</b>.</li>
-    <li><b>Wind</b> – local wind vs. the beach orientation. Offshore/side-off or &lt; 2.5 m/s = 100%; onshore drops to 8–65% – Atlantic onshore wind ruins a groundswell quickly.</li>
+    <li><b>Wind</b> – local wind vs. the beach orientation. Offshore/side-off or &lt; 2.5 m/s = 100%; onshore drops to 8–70% – a light onshore leaves a groundswell rideable, 8 m/s+ blows it out. Wind never changes the surf size here.</li>
     <li><b>Period</b> – 11 s+ groundswell full marks, 8 s fair, &lt; 6 s poor.</li>
     <li><b>Sea</b> – how organised the ocean is: share of local wind-sea, crossing swell trains, period. This is what separates a clean day from a lumpy one at the same size.</li>
     <li><b>Tide</b> – each spot's preferred tide (from the sea-level forecast), up to −32%.</li>
