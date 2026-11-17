@@ -207,7 +207,7 @@ function buildModel(W, Wv, Ws, clim, cal){
 
 /* ============================ climatology (3 y hindcast) ============================ */
 async function fetchClimate(){
-  const key="pn_clim_v1_"+COMFORT_M, c=load(key); if(c&&Date.now()-c.at<14*864e5) return c;
+  const key="pn_clim_v2_"+COMFORT_M, c=load(key); if(c&&Date.now()-c.at<14*864e5) return c;
   const end=new Date(Date.now()-10*864e5), start=new Date(end); start.setFullYear(end.getFullYear()-3);
   const d=x=>x.toISOString().slice(0,10);
   const [wv, wn] = await Promise.all([
@@ -428,7 +428,7 @@ function gearHtml(S, h, compact){
 function comfortBar(){
   return `<div class="comfort"><span>My max wave</span><div class="opts">${COMFORT.map(c=>`<label class="opt"><input type="radio" name="cm" value="${c.v}" ${c.v===COMFORT_M?"checked":""}><span>${c.t}</span></label>`).join("")}</div></div>`;
 }
-function bindComfort(){ document.querySelectorAll('input[name="cm"]').forEach(r=>r.onchange=async()=>{ COMFORT_M=+r.value; store("pn_comfort",COMFORT_M); CLIM=load("pn_clim_v1_"+COMFORT_M); if(RAW) rebuild(); route();
+function bindComfort(){ document.querySelectorAll('input[name="cm"]').forEach(r=>r.onchange=async()=>{ COMFORT_M=+r.value; store("pn_comfort",COMFORT_M); CLIM=load("pn_clim_v2_"+COMFORT_M); if(RAW) rebuild(); route();
   try{ CLIM=await fetchClimate(); rebuild(); route(); }catch(e){} }); }
 
 /* coast-wide ocean state per day (from the exposed-beach scenario) */
@@ -696,7 +696,7 @@ function ratingsCard(){
     <tr><td><span class="chip" style="--c:#6da7ec">Small</span></td><td>Total sea &lt; 0.7 m offshore.</td></tr>
     <tr><td><span class="chip" style="--c:#f07a2a">Mixed / lumpy</span></td><td>Wind-sea &gt; 45% of the energy, strong crossing swells, or &lt; 7.5 s and &gt; 1 m.</td></tr>
     <tr><td><span class="chip" style="--c:#7a3fbf">Big & powerful</span></td><td>≥ 3 m offshore, or ≥ 2.3 m at 14 s+. Exposed beaches close out; rips.</td></tr>
-    <tr><td><span class="chip" style="--c:#b42324">Stormy</span></td><td>Wind-sea ≥ 1.6 m, ≥ 4.5 m total, or wind ≥ 14 m/s. Not a surf day.</td></tr></table>
+    <tr><td><span class="chip" style="--c:#b42324">Stormy</span></td><td>Wind-sea ≥ 1.8 m (≥ 1.3 m with 10 m/s wind), wind ≥ 14 m/s, or ≥ 4 m of short-period (&lt; 10 s) wind-driven sea. Not a surf day.</td></tr></table>
    <h3 style="margin-top:14px">What the % means</h3>
    <p class="small"><b>Chance of a good session</b> = probability the hour rates <b>Fair or better for you</b>. It combines three wave models – Météo-France MFWAM (45%), ECMWF WAM (30%), NOAA GFS-Wave (25%) – and leans on the spot's 3-year history the further ahead you look. <b>Go</b> ≥ 60% · <b>Worth a look</b> 40–60% · <b>Long shot</b> 20–40%.</p>
    <h3 style="margin-top:14px">Wetsuit guide (Peniche water 14–20 °C)</h3>
@@ -814,7 +814,7 @@ function setStatus(html, cls=""){ $("#status").innerHTML=html; $("#status").clas
 
 async function boot(){
   setStatus("Loading Atlantic swell & wind…");
-  CLIM = load("pn_clim_v1_"+COMFORT_M);
+  CLIM = load("pn_clim_v2_"+COMFORT_M);
   const cached=load("pn_last_v1");
   let W=null, Wv=null, Ws=null, err=null;
   try{ [W,Wv,Ws]=await Promise.all([fetchWind(), fetchWaves(), fetchSea().catch(e=>{console.warn("sea",e);return null})]); }catch(e){ err=e; }

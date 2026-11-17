@@ -1,5 +1,5 @@
 /* Peniche service worker: app shell offline, forecast data network-first */
-const SHELL = "peniche-shell-v2";
+const SHELL = "peniche-shell-v3";
 const DATA = "peniche-data-v1";
 const FILES = ["./", "index.html", "js/psm.js", "js/app.js", "manifest.webmanifest", "../icons/icon-192.png", "../icons/icon-512.png", "../icons/apple-touch-icon.png", "../vendor/leaflet/leaflet.js", "../vendor/leaflet/leaflet.css"];
 
