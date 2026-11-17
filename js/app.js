@@ -431,7 +431,9 @@ function topCard(sl, i){ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak), p=pl
     <span class="small">🚗 Leave by <b>${tHr(p.leave)}</b> · ${rangeTxt(sl.peakH)} m · ${windLabel(P.rel,P.ws)}</span>
     <span>${chip(sl.peakH.q)} ${SK.skillChip(P.req, SKILL_LVL)} ${hzChip(safety(sl.S,sl.peakH).lvl,"Safety:")} ${matChip(maturity(sl.S,sl.peakH),"Forecast:")}</span></div>
     <div class="topc-p"><b>${pct(sl.pPeak)}</b><span class="tier ${T.c}">${T.t}</span></div></a>`; }
-function lastsTxt(sl){ return sl.ride?`waves rideable ~${sl.ride} h (${tHr(sl.rideFrom)}–${tHr(sl.rideTo)})${sl.trend?", "+sl.trend:""}`:"short window"; }
+function lastsTxt(sl){ if(!sl.ride) return "short window";
+  const dl=sl.S.hours.filter(h=>h.t>=sl.rideFrom&&h.t<sl.rideTo&&h.day).length;
+  return `rideable ~${dl} daylight h${sl.ride>dl?` (sea lasts ${sl.ride} h, ${tHr(sl.rideFrom)}–${tHr(sl.rideTo)})`:` (${tHr(sl.rideFrom)}–${tHr(sl.rideTo)})`}${sl.trend?", "+sl.trend:""}`; }
 function plan(spot, start, end){
   const leave=start-(spot.driveMin+15)*60, arrive=start-15*60, home=end+spot.driveMin*60, sun=sunFor(start);
   return {leave, arrive, home, firstLight: sun.rise, dark: sun.set};
