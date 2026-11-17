@@ -4,49 +4,49 @@ const K = window.KWM;
 
 /* ============================ SPOTS ============================ */
 const SPOTS = [
- {id:"lynaes", name:"Lynæs", area:"Hundested", lat:55.948, lon:11.862, sea:[55.958,11.825], sea2:[55.975,11.80],
+ {id:"lynaes", rocks:0, piers:true, rips:0, current:1, name:"Lynæs", area:"Hundested", lat:55.948, lon:11.862, sea:[55.958,11.825], sea2:[55.975,11.80],
   facing:295, bestSwell:320, swellHalf:55, exposure:0.85, minWave:0.4, driveKm:65, driveMin:60,
   bottom:"Sand, gently sloping", level:"Beginner → intermediate",
   swellNeed:"NW windswell squeezing in between Rørvig and Hundested; needs NW 9 m/s+ for 8 h+",
   idealWind:"S–SE (offshore) after a NW blow; tolerates light W",
   desc:"Beach at the mouth of Isefjord – the surf-school hub of North Zealand. Its window to the open Kattegat is narrow (NW only), so it is smaller than the north coast but cleaner and sheltered when it's blowing hard from the W.",
   hazards:"Current near the harbour and fjord mouth.", parking:"Lynæs Strand / surf centre"},
- {id:"liseleje", name:"Liseleje", area:"Halsnæs", lat:56.012, lon:11.963, sea:[56.035,11.93], sea2:[56.06,11.88],
+ {id:"liseleje", rocks:1, piers:false, rips:1, current:0, name:"Liseleje", area:"Halsnæs", lat:56.012, lon:11.963, sea:[56.035,11.93], sea2:[56.06,11.88],
   facing:315, bestSwell:310, swellHalf:65, exposure:0.95, minWave:0.4, driveKm:60, driveMin:60,
   bottom:"Sand with bars, some stones", level:"All levels",
   swellNeed:"W–NW–N windswell; best after 10–15 m/s W/NW",
   idealWind:"SW–S (side-off/offshore) as a W–NW blow eases",
   desc:"NW-facing sandy beach with shifting bars, open to the long NW fetch across the Kattegat. Often the first spot to clean up when a westerly gale backs SW.",
   hazards:"Rips between bars when it's big.", parking:"Liseleje Strandvej"},
- {id:"tisvilde", name:"Tisvildeleje", area:"Gribskov", lat:56.058, lon:12.072, sea:[56.08,12.04], sea2:[56.11,12.00],
+ {id:"tisvilde", rocks:0, piers:false, rips:2, current:0, name:"Tisvildeleje", area:"Gribskov", lat:56.058, lon:12.072, sea:[56.08,12.04], sea2:[56.11,12.00],
   facing:320, bestSwell:315, swellHalf:65, exposure:1.0, minWave:0.4, driveKm:60, driveMin:60,
   bottom:"Sand, outer and inner bars", level:"All levels",
   swellNeed:"NW windswell 0.8 m+ offshore; NW/W 9 m/s+ for half a day",
   idealWind:"S–SW (offshore/side-off); light NW onshore OK when small",
   desc:"Long NW-facing beach backed by Tisvilde Hegn forest. Very exposed to NW so it holds size and has the most consistent sandbar peaks on this stretch.",
   hazards:"Big NW onshore days are a washing machine – pick the clean-up.", parking:"Tisvildeleje Strand"},
- {id:"udsholt", name:"Rågeleje / Udsholt", area:"Gribskov", minSkill:2, lat:56.103, lon:12.185, sea:[56.13,12.17], sea2:[56.16,12.15],
+ {id:"udsholt", rocks:2, piers:false, rips:1, current:0, name:"Rågeleje / Udsholt", area:"Gribskov", minSkill:2, lat:56.103, lon:12.185, sea:[56.13,12.17], sea2:[56.16,12.15],
   facing:345, bestSwell:325, swellHalf:60, exposure:1.0, minWave:0.5, driveKm:62, driveMin:60,
   bottom:"Pebbles, stones and boulder patches", level:"Intermediate+",
   swellNeed:"NW–N windswell 0.8 m+; better with higher water",
   idealWind:"W–WSW (side-offshore)",
   desc:"Stony stretch between Rågeleje and Udsholt. Boulders give the waves more shape than the sand beaches – arguably the best wave on the coast when it works, but it needs a bit more size.",
   hazards:"Rocks – booties recommended, careful at low water.", parking:"Udsholt Strand / Rågeleje"},
- {id:"gilleleje", name:"Gilleleje", area:"Gribskov", lat:56.124, lon:12.292, sea:[56.15,12.29], sea2:[56.18,12.28],
+ {id:"gilleleje", rocks:1, piers:true, rips:1, current:0, name:"Gilleleje", area:"Gribskov", lat:56.124, lon:12.292, sea:[56.15,12.29], sea2:[56.18,12.28],
   facing:355, bestSwell:315, swellHalf:60, exposure:0.95, minWave:0.4, driveKm:60, driveMin:55,
   bottom:"Sand and stones, harbour piers", level:"All levels",
   swellNeed:"WNW–N windswell from a NW blow across the Kattegat",
   idealWind:"W (side-offshore) with a WNW sea",
   desc:"Northernmost point of Zealand. West of the harbour faces due north; the classic setup is a WNW windswell with a W wind cleaning it up.",
   hazards:"Pier structures; shallow stones near shore.", parking:"Gilleleje Vesterstrand"},
- {id:"hornbaek", name:"Hornbæk", area:"Helsingør", lat:56.094, lon:12.462, sea:[56.12,12.47], sea2:[56.15,12.47],
+ {id:"hornbaek", rocks:1, piers:true, rips:1, current:0, name:"Hornbæk", area:"Helsingør", lat:56.094, lon:12.462, sea:[56.12,12.47], sea2:[56.15,12.47],
   facing:15, bestSwell:345, swellHalf:60, exposure:0.9, minWave:0.4, driveKm:50, driveMin:50,
   bottom:"Sand with stones; rocks along the Plantage", level:"All levels",
   swellNeed:"NW–N windswell; N/NW 9 m/s+",
   idealWind:"SW–W (side-off/offshore)",
   desc:"NNE-facing beach from the harbour east to Hornbæk Plantage. Picks up N windswell Gilleleje misses and goes side-offshore in westerlies. Closest north-coast break to Copenhagen.",
   hazards:"Harbour moles; rocky patches.", parking:"Hornbæk Havn / Plantage"},
- {id:"aalsgaarde", name:"Ålsgårde / Hellebæk", area:"Helsingør", lat:56.074, lon:12.545, sea:[56.095,12.57], sea2:[56.12,12.60],
+ {id:"aalsgaarde", rocks:0, piers:false, rips:0, current:0, shallow:true, name:"Ålsgårde / Hellebæk", area:"Helsingør", lat:56.074, lon:12.545, sea:[56.095,12.57], sea2:[56.12,12.60],
   facing:25, bestSwell:0, swellHalf:55, exposure:0.8, minWave:0.4, driveKm:45, driveMin:45,
   bottom:"Sand, mostly lefts", level:"Beginner → intermediate",
   swellNeed:"N windswell; Kullen blocks the NNE, NW sea runs along the coast",
@@ -375,7 +375,7 @@ function topCard(sl, i){ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak), p=pl
   return `<a class="topc" href="#spot-${s.id}" data-t="${sl.peakH.t}"><span class="rank">#${i+1}</span>
     <div class="topc-m"><b>${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span>
     <span class="small">🚗 Leave by <b>${tHr(p.leave)}</b> · ${rangeTxt(sl.peakH)} m · ${windLabel(P.rel,P.ws)}</span>
-    <span>${chip(sl.peakH.q)} ${SK.skillChip(P.req, SKILL_LVL)}</span></div>
+    <span>${chip(sl.peakH.q)} ${SK.skillChip(P.req, SKILL_LVL)} ${hzChip(safety(sl.S,sl.peakH).lvl,"Safety:")}</span></div>
     <div class="topc-p"><b>${pct(sl.pPeak)}</b><span class="tier ${T.c}">${T.t}</span></div></a>`; }
 function plan(spot, start, end){
   const leave=start-(spot.driveMin+15)*60, arrive=start-15*60, home=end+spot.driveMin*60, sun=sunFor(start);
@@ -507,6 +507,84 @@ function gearHtml(S, h, compact){
     <div><span>Time in the water</span><b>${time}</b><em>comfortable with that suit${g.chill.length?` · shortened for ${g.chill.join(" & ")}`:""}</em></div></div>`;
 }
 
+
+/* ============================ SAFETY: ranked, condition-based hazards ============================ */
+const HZ_LV=[
+  {t:"Low", c:"#1fa463", bg:"#e3f5ea", d:"Usual precautions."},
+  {t:"Be aware", c:"#2a78d6", bg:"#e8f2fd", d:"Worth keeping in mind."},
+  {t:"Take care", c:"#c98a00", bg:"#fff3d6", d:"Plan for it before you paddle out."},
+  {t:"Serious", c:"#c0392b", bg:"#fde6e6", d:"Only for experienced surfers – consider another spot or time."}];
+function hzChip(l, prefix){ const L=HZ_LV[l]; return `<span class="hzc" style="--c:${L.c};--b:${L.bg}">${prefix?prefix+" ":""}${L.t}</span>`; }
+function hazards(S, h){
+  const s=S.spot, P=(h&&h.P)||{}, out=[], add=(o)=>out.push(o);
+  const hb=P.hb||0, ws=P.ws||0, rel=P.rel??0, gust=h.gust||ws, wt=waterTemp(S,h), air=h.temp, sl=h.sl, m=monthOf(h.t);
+  // cold water
+  if(wt!=null){ let l=wt<6?2:wt<12?1:0; if(l<3&&air!=null&&air<3&&ws>=8) l++;
+    add({k:"cold",n:"Cold water",l,dyn:true,src:"sea temperature + air + wind",
+      why:`Water ${fmt(wt,0)}°C, air ${fmt(air,0)}°C${ws>=8?`, wind ${fmt(ws,0)} m/s`:""}. Energy and grip fade faster than you notice.`,
+      tip:"Wear the suggested wetsuit, booties, hood and gloves; stick to the time-in-water estimate and come in while you still feel strong."}); }
+  // offshore drift
+  if(rel>=105&&ws>=4){ const l=ws>=10?3:ws>=7?2:1;
+    add({k:"off",n:"Offshore wind drift",l,dyn:true,src:"DMI wind vs beach orientation",
+      why:`${compass(P.wd)} ${fmt(ws,0)} m/s blows from land to sea here – clean waves, but you and a lost board drift out.`,
+      tip:"Stay close to the peak and the shore; never chase a board that's drifting out."}); }
+  // rips & along-shore current
+  { let l=hb>=1.3?2:hb>=0.7?1:0; if(s.rips&&hb>=0.7) l+=s.rips>=2?1:0; const along=rel>=40&&rel<105&&ws>=8; if(along&&hb>=0.5) l++; l=Math.min(hb>=1.6?3:2,l);
+    if(hb>=0.4||along) add({k:"rip",n:"Rip & along-shore currents",l,dyn:true,src:"wave height, sandbars, wind angle",
+      why:`${fmt(hb)} m waves${s.rips?" over sandbars":""}${along?` and ${fmt(ws,0)} m/s cross-shore wind pushing water along the beach`:""}.`,
+      tip:"Check where the water is calm and darker before going in. If you get pulled, paddle parallel to the beach, not against it."}); }
+  // rocks
+  if(s.rocks){ let l=s.rocks; if(sl!=null&&sl<-0.1) l++; if(hb>=1) l++; l=Math.min(3,l);
+    add({k:"rock",n:"Rocks & stones",l,dyn:true,src:"spot bottom, water level, wave height",
+      why:`${esc(s.bottom)}.${sl!=null?` Water level ${sl>0?"+":""}${fmt(sl*100,0)} cm${sl<-0.1?" – lower than normal, more rocks exposed":""}.`:""}`,
+      tip:"Booties on; walk in and out where it's sandy; fall flat and shallow."}); }
+  // shallow
+  if(s.shallow){ const l=(sl!=null&&sl<-0.1)?2:1;
+    add({k:"shallow",n:"Shallow water",l,dyn:true,src:"water level",why:"Shallow sandbanks – more so at low water.",tip:"Fall flat, protect your head."}); }
+  // piers
+  if(s.piers){ const l=hb>=0.9&&rel>=40&&rel<110&&ws>=7?2:1;
+    add({k:"pier",n:"Harbour piers & moles",l,dyn:l>1,src:"spot layout, wind angle",
+      why:`Stone piers near the lineup${l>1?"; today's cross-shore wind drifts surfers toward them":""}.`,
+      tip:"Keep a good gap to the moles and paddle back up-current regularly."}); }
+  // fjord current
+  if(s.current){ const l=ws>=10?2:1;
+    add({k:"fjord",n:"Fjord-mouth current",l,dyn:ws>=10,src:"spot layout, wind",why:"Water flows in and out of Isefjord past the harbour.",tip:"Surf away from the harbour entrance."}); }
+  // strong wind
+  if(ws>=9||gust>=13){ const l=gust>=18?3:gust>=14||ws>=12?2:1;
+    add({k:"wind",n:"Strong wind & gusts",l,dyn:true,src:"DMI wind and gusts",
+      why:`${fmt(ws,0)} m/s, gusts ${fmt(gust,0)} m/s – tiring paddle, boards get blown around on the beach.`,
+      tip:"Hold your board nose-into-wind on the beach; shorter session."}); }
+  // waves vs your level
+  if(P.req!=null&&hb>=0.4){ const over=P.req-SKILL_LVL, l=over>=2?3:over===1?2:(over===0&&hb>=1)?1:0;
+    add({k:"size",n:"Wave size vs your level",l,dyn:true,src:"wave height + your skill setting",
+      why:`${fmt(hb)} m (${sizeWords(hb).toLowerCase()}) needs ${SK.SKILLS[P.req].t}; you're set to ${SK.SKILLS[SKILL_LVL].t}.`,
+      tip: over>0?"Watch a few sets from the beach first; it's fine to surf the inside or skip this one.":"Within your level – normal care."}); }
+  // daylight
+  { const sun=sunFor(h.t), left=(sun.set-(h.t+3600))/60; if(h.day&&left<90){ const l=left<40?2:1;
+    add({k:"dark",n:"Fading daylight",l,dyn:true,src:"sunset time",why:`Sunset ${tHr(sun.set)}.`,tip:`Be back on the beach by about ${tHr(sun.set)}.`}); } }
+  // remote / no lifeguards
+  { const summer=m>=5&&m<=7; add({k:"alone",n:"Quiet beaches, no lifeguards",l:summer?0:1,dyn:false,src:"season",
+      why:summer?"Lifeguards on some beaches in summer.":"Outside summer the beaches are quiet and unguarded.",
+      tip:"Surf with a buddy, tell someone where you are; emergency number 112."}); }
+  out.sort((a,b)=>b.l-a.l||(b.dyn-a.dyn));
+  return out;
+}
+function safety(S,h){ const list=hazards(S,h); const lvl=list.length?list[0].l:0; return {lvl, list, top:list.filter(x=>x.l===lvl&&x.l>0)}; }
+function safetyLine(S,h){ const sf=safety(S,h); return `${hzChip(sf.lvl,"Safety:")}${sf.top.length?` <span class="small muted">${sf.top.slice(0,2).map(x=>x.n.toLowerCase()).join(", ")}</span>`:""}`; }
+function safetyCard(S,h){
+  const sf=safety(S,h), L=HZ_LV[sf.lvl];
+  const daysHtml=[...new Set(S.hours.filter(x=>!x.past&&x.day).map(x=>dayKey(x.t)))].slice(0,5).map(dk=>{
+    const hs=S.hours.filter(x=>dayKey(x.t)===dk&&x.day&&!x.past&&x.P); if(!hs.length) return "";
+    const lv=hs.map(x=>safety(S,x).lvl), mn=Math.min(...lv), mx=Math.max(...lv);
+    return `<div class="hzd"><b>${tWd(hs[0].t)}</b>${hzChip(mn)}${mx>mn?`<span class="small muted">up to</span>${hzChip(mx)}`:""}</div>`; }).join("");
+  return `<div class="card"><h3>Safety & hazards · ${tDay(h.t)} ${tHr(h.t)}</h3>
+   <div class="hz-sum" style="--c:${L.c};--b:${L.bg}"><b>${L.t}</b><span>${L.d}</span></div>
+   <ol class="hz">${sf.list.map(x=>`<li><div class="hz-h">${hzChip(x.l)}<b>${x.n}</b><span class="hz-dyn ${x.dyn?"on":""}">${x.dyn?"depends on today's conditions":"always here"}</span></div>
+     <p>${x.why}</p><p class="muted">→ ${x.tip}</p></li>`).join("")}</ol>
+   <h3 style="margin-top:12px">Next days (daylight, lowest → highest)</h3><div class="hzdays">${daysHtml}</div>
+   <p class="small muted">Ranked from forecast wind and gusts (DMI), wave height, water temperature and level, sunset and the spot's layout. A guide to help you plan – always look at the water yourself before going in.</p></div>`;
+}
+
 /* ============================ HOME ============================ */
 function renderHome(){
   const M=STATE, el=$("#view"), slots=allSlots(M), tops=top3(slots), top=tops[0]||slots[0];
@@ -526,20 +604,20 @@ function renderHome(){
     return `<details class="slot" ${i===0?"open":""}><summary>
       <span class="slot-p"><b>${pct(sl.pPeak)}</b><span class="tier ${T.c}">${T.t}</span></span>
       <span class="slot-main"><b>${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span></span>
-      <span class="slot-r">${chip(sl.peakH.q)}<span>${rangeTxt(sl.peakH)} m · ${P.req!=null?SK.SKILLS[P.req].t.toLowerCase():""}</span></span></summary>
-      ${planHtml(s, sl)}${gearHtml(sl.S, sl.peakH, true)}${whyHtml(sl.S, sl.peakH)}${locHtml(s)}
+      <span class="slot-r">${chip(sl.peakH.q)}<span>${rangeTxt(sl.peakH)} m waves</span><span class="small muted">${P.req!=null?SK.SKILLS[P.req].t:""} · ${HZ_LV[safety(sl.S,sl.peakH).lvl].t.toLowerCase()}</span></span></summary>
+      ${planHtml(s, sl)}<div class="sfl">${safetyLine(sl.S, sl.peakH)}</div>${gearHtml(sl.S, sl.peakH, true)}${whyHtml(sl.S, sl.peakH)}${locHtml(s)}
       <a class="btn small-btn" href="#spot-${s.id}" data-t="${sl.peakH.t}">Open ${esc(s.name)} forecast →</a></details>`; }).join("");
   const days=[...new Set(M.spots[0].hours.filter(h=>!h.past&&h.day).map(h=>dayKey(h.t)))].slice(0,5);
   const rows=M.spots.map(S=>{
     const s=S.spot, nowH=S.hours.find(h=>!h.past)||S.hours[0], P=nowH.P, b=spotBest(S);
     const strip=days.map(dk=>{ const hs=S.hours.filter(h=>dayKey(h.t)===dk&&h.day&&!h.past&&h.p!=null);
       const best=hs.reduce((a,h)=>!a||h.p>a.p?h:a,null); const i=best?ratingIdx(best.q):-1;
-      return `<span class="seg"><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i><em>${best?tWd(best.t).slice(0,2)+" "+pct(best.p):""}</em></span>`; }).join("");
+      return `<span class="seg"><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i><em>${best?tWd(best.t).slice(0,2)+" "+pct(best.p):""}</em><em class="wh">${best?rangeTxt(best)+" m":""}</em></span>`; }).join("");
     const ri=ratingIdx(nowH.q);
     return `<a class="row" href="#spot-${s.id}">
       <span class="stripe" style="background:${ri>=0?RATINGS[ri].c:"#cfd3d8"}"></span>
       <div class="row-main"><div class="row-top"><b>${esc(s.name)}</b><span class="muted">${s.driveMin} min · faces ${compass(s.facing)}</span></div>
-        <div class="row-now"><span class="muted small">Now</span><span class="surf">${rangeTxt(nowH)} m</span>${chip(nowH.q)}${P&&P.above?SK.skillChip(P.req,SKILL_LVL):""}<span class="wind">${P?arrow(P.wd,13)+" "+fmt(P.ws,0)+" "+windLabel(P.rel,P.ws):""}</span></div>
+        <div class="row-now"><span class="muted small">Waves now</span><span class="surf">${rangeTxt(nowH)} m</span>${chip(nowH.q)}${P&&P.req!=null?SK.skillChip(P.req,SKILL_LVL):""}${P?hzChip(safety(S,nowH).lvl):""}<span class="wind">${P?arrow(P.wd,13)+" "+fmt(P.ws,0)+" "+windLabel(P.rel,P.ws):""}</span></div>
         <div class="strip">${strip}</div></div>
       <div class="row-next">${b?`<b>${pct(b.pPeak)}</b><span>${tWd(b.start)} ${tHr(b.start)}</span>`:`<span class="muted">–</span>`}</div></a>`;
   }).join("");
@@ -589,12 +667,12 @@ function renderSpot(id){
     return `<button class="dtab ${dk===VIEW.day?"on":""}" data-d="${dk}"><span>${tWd(S.hours.find(h=>dayKey(h.t)===dk).t)}</span><b>${sl?pct(sl.pPeak):"–"}</b><em>${sl?rangeTxt(sl.peakH)+" m":""}</em><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i></button>`; }).join("");
   const dh=S.hours.filter(h=>dayKey(h.t)===VIEW.day&&(VIEW.night||h.day||h.t===sel.t));
   const rows=dh.map(h=>{ const p=h.P||{}; return `<tr class="${h.t===sel.t?"sel":""} ${h.past?"past":""}" data-t="${h.t}">
-     <td>${tHr(h.t)}</td><td><b>${pct(h.p)}</b></td><td>${p.above?`<span class="chip" style="--c:${SK.SKILLS[p.req].c}">${SK.SKILLS[p.req].t}+</span>`:chip(h.q)}</td><td class="num"><b>${rangeTxt(h)}</b></td>
+     <td>${tHr(h.t)}</td><td><b>${pct(h.p)}</b></td><td>${p.above?`<span class="chip" style="--c:${SK.SKILLS[p.req].c}">${SK.SKILLS[p.req].t}+</span>`:chip(h.q)}</td><td class="num"><b>${rangeTxt(h)}</b></td><td>${p.req!=null?`<span class="chip" style="--c:${SK.SKILLS[p.req].c}">${SK.SKILLS[p.req].short}</span>`:"–"}</td><td>${h.P?hzChip(safety(S,h).lvl):"–"}</td>
      <td class="num">${fmt(p.Hs)}<small> m</small> ${fmt(p.T,0)}<small>s</small> <span class="muted">${compass(p.dir)}</span></td>
      <td class="num">${arrow(p.wd,13)} ${fmt(p.ws,0)}<small>${h.gust!=null?"–"+fmt(h.gust,0):""}</small> <span class="muted">${p.ws!=null?windLabel(p.rel,p.ws):""}</span></td></tr>`; }).join("");
   const sims=similarSessions(s.id, P), mySess=SESSIONS.filter(x=>x.spot===s.id).sort((a,b)=>b.start-a.start);
   const slotRows=slots.slice().sort((a,b)=>a.start-b.start).map(sl=>{ const T=tier(sl.pPeak), p=plan(s,sl.start,sl.end);
-    return `<tr data-t="${sl.peakH.t}" class="${dayKey(sl.start)===VIEW.day?"sel":""}"><td><b>${tWd(sl.start)}</b> ${tHr(sl.start)}–${tHr(sl.end)}</td><td><b>${pct(sl.pPeak)}</b><br><span class="tier ${T.c}">${T.t}</span></td><td>${chip(sl.peakH.q)}<br><span class="small">${rangeTxt(sl.peakH)} m</span></td><td class="small">${arrow(sl.peakH.P.wd,12)} ${compass(sl.peakH.P.wd)} ${fmt(sl.peakH.P.ws,0)} ${windLabel(sl.peakH.P.rel,sl.peakH.P.ws)}</td><td class="small">leave ${tHr(p.leave)}</td></tr>`; }).join("");
+    return `<tr data-t="${sl.peakH.t}" class="${dayKey(sl.start)===VIEW.day?"sel":""}"><td><b>${tWd(sl.start)}</b> ${tHr(sl.start)}–${tHr(sl.end)}</td><td><b>${pct(sl.pPeak)}</b><br><span class="tier ${T.c}">${T.t}</span></td><td>${chip(sl.peakH.q)}<br><span class="small">${rangeTxt(sl.peakH)} m waves</span><br>${hzChip(safety(S,sl.peakH).lvl)}</td><td class="small">${arrow(sl.peakH.P.wd,12)} ${compass(sl.peakH.P.wd)} ${fmt(sl.peakH.P.ws,0)} ${windLabel(sl.peakH.P.rel,sl.peakH.P.ws)}</td><td class="small">leave ${tHr(p.leave)}</td></tr>`; }).join("");
   const guide=windGuide(s);
   const selSlot=slots.find(x=>x.hours.includes(sel));
   $("#view").innerHTML=`
@@ -602,7 +680,7 @@ function renderSpot(id){
      <div><h1>${esc(s.name)}</h1><div class="muted">${esc(s.area)} · faces ${compass(s.facing)} · ${s.driveMin} min from Copenhagen</div></div></div>
    <div class="now-card">
      <div class="now-top"><div><div class="muted small">${tDay(sel.t)} · ${tHr(sel.t)}${sel.past?" (past)":""}</div>
-       <div class="big">${rangeTxt(sel)}<small>m</small></div><div>${sizeWords(P.hb)} ${SK.skillChip(P.req, SKILL_LVL)}</div></div>
+       <div class="small" style="opacity:.8">Wave height at the beach</div><div class="big">${rangeTxt(sel)}<small>m</small></div><div>${sizeWords(P.hb)} ${SK.skillChip(P.req, SKILL_LVL)} ${hzChip(safety(S,sel).lvl,"Safety:")}</div></div>
        <div class="now-r">${chip(sel.q)}<div class="pct"><b>${pct(sel.p)}</b><span>chance of a<br>good session</span></div></div></div>
      <div class="stats">
        <div><span>Wind</span><b>${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)}</b><em>${P.ws!=null?windLabel(P.rel,P.ws):""}${sel.gust!=null?` · g${fmt(sel.gust,0)}`:""}</em></div>
@@ -612,6 +690,7 @@ function renderSpot(id){
      </div>
      ${selSlot?planHtml(s, selSlot):""}
    </div>
+   ${safetyCard(S, sel)}
    <div class="card"><h3>Board & wetsuit · ${tDay(sel.t)} ${tHr(sel.t)}</h3>${gearHtml(S, sel)}</div>
    <div class="card"><h3>Why · ${tDay(sel.t)} ${tHr(sel.t)}</h3>${whyHtml(S, sel)}${checklist(S, sel)}</div>
    <div class="card"><h3>Best time slots · next 5 days</h3><p class="small muted">Best daylight block per day. Tap to open that day.</p>
@@ -620,7 +699,7 @@ function renderSpot(id){
    <div class="dtabs">${tabs}</div>
    <div class="card"><div class="ch-h"><h3>Hour by hour</h3><label class="tog"><input type="checkbox" id="night" ${VIEW.night?"checked":""}> night</label></div>
      <div id="dayChart"></div>
-     <div class="tbl-wrap"><table class="hours"><thead><tr><th>Time</th><th>Chance</th><th>Rating</th><th>Surf m</th><th>Windswell</th><th>Wind m/s</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+     <div class="tbl-wrap"><table class="hours"><thead><tr><th>Time</th><th>Chance</th><th>Rating</th><th>Wave height m</th><th>Skill</th><th>Safety</th><th>Windswell</th><th>Wind m/s</th></tr></thead><tbody>${rows}</tbody></table></div></div>
    <div class="card"><h3>Location</h3>${locHtml(s)}<div class="mapbox small-map" id="spMap"></div><p class="small muted">Google Maps satellite view of the beach. Tap the route links for live traffic.</p></div>
    <div class="card"><h3>What makes ${esc(s.name)} work</h3><p>${esc(s.desc)}</p>
      <dl class="kv"><dt>Needs</dt><dd>${esc(s.swellNeed)}</dd><dt>Best wind</dt><dd>${esc(s.idealWind)}</dd><dt>Bottom</dt><dd>${esc(s.bottom)}</dd><dt>Level</dt><dd>${esc(s.level)}</dd><dt>Hazards</dt><dd>${esc(s.hazards)}</dd></dl>
@@ -723,6 +802,9 @@ function ratingsCard(){
    <table class="cmp">${RATING_DEF.map(([n,r,d])=>{const R=RATINGS.find(x=>x.t===n);return `<tr><td><span class="chip" style="--c:${R.c}">${n}</span></td><td class="small">q ${r}</td><td class="small">${d}</td></tr>`}).join("")}</table>
    <h3 style="margin-top:14px">What the % means</h3>
    <p class="small"><b>Chance of a good session</b> = probability the hour rates <b>Fair or better</b>. It combines three runs – Kattegat model with DMI wind (50%), with ECMWF wind (20%) and DWD's EWAM wind-sea (30%) – and leans on the spot's 5-year history the further ahead you look. <b>Go</b> ≥ 60% · <b>Worth a look</b> 40–60% · <b>Long shot</b> 20–40%.</p>
+   <h3 style="margin-top:14px">Safety levels</h3>
+   <table class="cmp small">${HZ_LV.map(L=>`<tr><td>${hzChip(HZ_LV.indexOf(L))}</td><td>${L.d}</td></tr>`).join("")}</table>
+   <p class="small muted">Each hour lists the hazards that apply at that spot – cold water, offshore drift, rips and along-shore currents, rocks, piers, strong wind, wave size vs your level, fading daylight, quiet unguarded beaches – ranked from highest to lowest. The overall level is the highest single hazard. "Depends on today's conditions" means the forecast moves it; "always here" means it comes with the spot or season.</p>
    <h3 style="margin-top:14px">Board & wetsuit guide</h3>
    <table class="cmp small"><tr><td><b>Surf &lt; 0.45 m or &lt; 4 s</b></td><td>Longboard 9'+ / foamie</td></tr><tr><td><b>0.45–0.8 m</b></td><td>Fish/groveller when clean, mid-length 7–8' when bumpy</td></tr><tr><td><b>0.8–1.4 m</b></td><td>Shortboard with volume / hybrid when clean, mid-length in onshore chop</td></tr><tr><td><b>&gt; 1.4 m</b></td><td>Shortboard / step-up 6'2–6'8</td></tr></table>
    <table class="cmp small" style="margin-top:8px">${SUITS.map((x,i)=>`<tr><td><b>${i===SUITS.length-1?"&lt; 6":x[0]+(i?"–"+SUITS[i-1][0]:"+")}°C</b></td><td>${x[1]}${x[2]?" + "+x[2]:""}</td><td>${x[3][0]}–${x[3][1]} min</td></tr>`).join("")}</table>
