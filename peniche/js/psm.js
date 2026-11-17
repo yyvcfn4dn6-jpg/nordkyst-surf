@@ -76,8 +76,8 @@ function seaClean(ss){
 /* coast-wide classification for one hour */
 function seaClass(ss, ws){
   if(ss.Hs==null) return null;
-  if(ss.windH>=1.6 || ss.Hs>=4.5 || (ws!=null&&ws>=14)) return {k:"storm", t:"Stormy", c:"#b42324", d:"Storm sea: big, short-period and wind-driven. Everything is messy and dangerous – not a surf day."};
-  if(ss.Hs>=3.0 || (ss.Hs>=2.3 && ss.Tp>=14)) return {k:"xl", t:"Big & powerful", c:"#7a3fbf", d:"Heavy long-period groundswell. Exposed beaches close out and rips are strong; only the sheltered corners (Molhe Leste, Cantinho da Baía) are even worth a look."};
+  if(ss.windH>=1.8 || (ss.windH>=1.3&&ws!=null&&ws>=10) || (ws!=null&&ws>=14) || (ss.Hs>=4&&ss.Tp!=null&&ss.Tp<10&&ss.windFrac>0.3) || ss.Hs>=6.5) return {k:"storm", t:"Stormy", c:"#b42324", d:"Storm sea: big, short-period and wind-driven. Everything is messy and dangerous – not a surf day."};
+  if(ss.Hs>=3.0 || (ss.Hs>=2.3 && ss.Tp>=14)) return {k:"xl", t:"Big & powerful", c:"#7a3fbf", d:"Heavy groundswell (often 3–5 m offshore). Exposed beaches close out and rips are strong; only the sheltered corners (Molhe Leste, Cantinho da Baía) are even worth a look."};
   if(ss.windFrac>0.45 || ss.cross>0.75 || (ss.Tp!=null&&ss.Tp<7.5&&ss.Hs>1)) return {k:"mixed", t:"Mixed / lumpy", c:"#f07a2a", d:"Wind-sea and crossing swells on top of each other: waves arrive in uneven, lumpy peaks. Surfable, rarely clean."};
   if(ss.Hs<0.7) return {k:"small", t:"Small", c:"#6da7ec", d:"Little swell around – knee-high fun at the exposed beaches at best."};
   if(ss.Tp>=10 && ss.windFrac<0.25) return {k:"clean", t:"Clean groundswell", c:"#1fa463", d:"One organised long-period swell, little wind-sea – the classic Peniche setup. Pick the beach the wind is offshore at."};
@@ -142,6 +142,8 @@ function evaluate(spot, comps, wind, tideX, M, cal){
   const sz = sizeScore(sp.hb, spot.minWave, M), ts = tideScore(spot, tideX);
   const T = sp.dom ? sp.dom.T : ss.Tp;
   let q = sz * (0.25+0.75*wsc) * (0.5+0.5*periodScore(T)) * (0.45+0.55*sc) * ts;
+  const cls = seaClass(ss, wind.ws);
+  if(cls && cls.k==="storm") q *= 0.5;                        // storm sea: unsafe/unpleasant even where it's small
   if(cal && cal.qBias && q>0.05) q = clamp(q+cal.qBias, 0, 1);
   // surface: how clean the faces will feel (0..1) – wind on the faces × the sea itself
   const clean = clamp(wsc*0.65 + sc*0.35, 0, 1);

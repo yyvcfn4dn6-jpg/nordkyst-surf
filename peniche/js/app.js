@@ -147,11 +147,11 @@ function series(loc, v, m){ const h=loc&&loc.hourly; if(!h) return null; return 
 /* offshore wave components for one model at index k */
 function compsAt(Wv, m, k){
   const g=v=>{ const s=series(Wv,v,m); return s?s[k]:null; };
-  const out=[];
+  const out=[], pk=m==="meteofrance_wave"?1.12:1;   // MFWAM gives mean period → approx. peak period
   const H1=g("swell_wave_height");
   if(H1!=null){
-    out.push({kind:"swell", H:H1, T:g("swell_wave_peak_period")??g("swell_wave_period"), dir:g("swell_wave_direction")});
-    const H2=g("secondary_swell_wave_height"); if(H2!=null&&H2>0.05) out.push({kind:"swell2", H:H2, T:g("secondary_swell_wave_period"), dir:g("secondary_swell_wave_direction")});
+    out.push({kind:"swell", H:H1, T:g("swell_wave_peak_period")??(g("swell_wave_period")*pk), dir:g("swell_wave_direction")});
+    const H2=g("secondary_swell_wave_height"); if(H2!=null&&H2>0.05) out.push({kind:"swell2", H:H2, T:g("secondary_swell_wave_period")*pk, dir:g("secondary_swell_wave_direction")});
     const Hw=g("wind_wave_height"), Tw=g("wind_wave_period");
     if(Hw!=null&&Hw>0.02) out.push({kind:(Tw!=null&&Tw>=8)?"swell2":"wind", H:Hw, T:Tw, dir:g("wind_wave_direction")});
   } else {
