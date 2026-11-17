@@ -5,53 +5,74 @@ const K = window.KWM;
 /* ============================ SPOTS ============================ */
 const SPOTS = [
  {id:"lynaes", rocks:0, piers:true, rips:0, current:1, name:"Lynæs", area:"Hundested", lat:55.948, lon:11.862, sea:[55.958,11.825], sea2:[55.975,11.80],
-  facing:295, bestSwell:320, swellHalf:55, exposure:0.85, minWave:0.4, driveKm:65, driveMin:60,
-  bottom:"Sand, gently sloping", level:"Beginner → intermediate",
+  facing:295, bestSwell:320, swellHalf:55, exposure:0.7, minWave:0.35, windBest:[135,200], driveKm:65, driveMin:60,
+  bottom:"Sand and shells, gets very shallow", level:"Beginner → novice",
   swellNeed:"NW windswell squeezing in between Rørvig and Hundested; needs NW 9 m/s+ for 8 h+",
-  idealWind:"S–SE (offshore) after a NW blow; tolerates light W",
-  desc:"Beach at the mouth of Isefjord – the surf-school hub of North Zealand. Its window to the open Kattegat is narrow (NW only), so it is smaller than the north coast but cleaner and sheltered when it's blowing hard from the W.",
-  hazards:"Current near the harbour and fjord mouth.", parking:"Lynæs Strand / surf centre"},
- {id:"liseleje", rocks:1, piers:false, rips:1, current:0, name:"Liseleje", area:"Halsnæs", lat:56.012, lon:11.963, sea:[56.035,11.93], sea2:[56.06,11.88],
-  facing:315, bestSwell:310, swellHalf:65, exposure:0.95, minWave:0.4, driveKm:60, driveMin:60,
-  bottom:"Sand with bars, some stones", level:"All levels",
+  idealWind:"S–SE (offshore) after a NW blow",
+  desc:"Surf-school hub at the mouth of Isefjord. Spot guides describe it mainly as a sheltered standing area; small waves build at Hundested harbour next door in W–NW wind. Smaller than the north coast – a beginner/learning spot, not a destination on a big day.",
+  hazards:"Shells and shallow water; current near the harbour and fjord mouth.", parking:"Lynæs Strand / surf centre"},
+ {id:"liseleje", rocks:1, piers:true, rips:1, current:0, name:"Liseleje", area:"Halsnæs", lat:56.012, lon:11.963, sea:[56.035,11.93], sea2:[56.06,11.88],
+  facing:315, bestSwell:310, swellHalf:65, exposure:1.05, minWave:0.4, windBest:[200,250], driveKm:60, driveMin:60,
+  bottom:"Sand with a sandbank; breakwater by the car park", level:"Novice → intermediate",
   swellNeed:"W–NW–N windswell; best after 10–15 m/s W/NW",
-  idealWind:"SW–S (side-off/offshore) as a W–NW blow eases",
-  desc:"NW-facing sandy beach with shifting bars, open to the long NW fetch across the Kattegat. Often the first spot to clean up when a westerly gale backs SW.",
-  hazards:"Rips between bars when it's big.", parking:"Liseleje Strandvej"},
+  idealWind:"SW – the locals' favourite direction here",
+  desc:"NW-facing beach where a sandbank makes steep waves that are often a bit bigger than elsewhere; the breakwater by the car park organises them. Guides note the waves get a touch meatier ~500 m west of the usual entry.",
+  hazards:"Breakwater; rips between bars when it's big.", parking:"Large car park by the breakwater"},
  {id:"tisvilde", rocks:0, piers:false, rips:2, current:0, name:"Tisvildeleje", area:"Gribskov", lat:56.058, lon:12.072, sea:[56.08,12.04], sea2:[56.11,12.00],
-  facing:320, bestSwell:315, swellHalf:65, exposure:1.0, minWave:0.4, driveKm:60, driveMin:60,
+  facing:320, bestSwell:315, swellHalf:65, exposure:1.0, minWave:0.35, windBest:[225,275], driveKm:60, driveMin:60,
   bottom:"Sand, outer and inner bars", level:"All levels",
-  swellNeed:"NW windswell 0.8 m+ offshore; NW/W 9 m/s+ for half a day",
-  idealWind:"S–SW (offshore/side-off); light NW onshore OK when small",
-  desc:"Long NW-facing beach backed by Tisvilde Hegn forest. Very exposed to NW so it holds size and has the most consistent sandbar peaks on this stretch.",
-  hazards:"Big NW onshore days are a washing machine – pick the clean-up.", parking:"Tisvildeleje Strand"},
- {id:"udsholt", rocks:2, piers:false, rips:1, current:0, name:"Rågeleje / Udsholt", area:"Gribskov", minSkill:2, lat:56.103, lon:12.185, sea:[56.13,12.17], sea2:[56.16,12.15],
-  facing:345, bestSwell:325, swellHalf:60, exposure:1.0, minWave:0.5, driveKm:62, driveMin:60,
-  bottom:"Pebbles, stones and boulder patches", level:"Intermediate+",
-  swellNeed:"NW–N windswell 0.8 m+; better with higher water",
-  idealWind:"W–WSW (side-offshore)",
-  desc:"Stony stretch between Rågeleje and Udsholt. Boulders give the waves more shape than the sand beaches – arguably the best wave on the coast when it works, but it needs a bit more size.",
-  hazards:"Rocks – booties recommended, careful at low water.", parking:"Udsholt Strand / Rågeleje"},
- {id:"gilleleje", rocks:1, piers:true, rips:1, current:0, name:"Gilleleje", area:"Gribskov", lat:56.124, lon:12.292, sea:[56.15,12.29], sea2:[56.18,12.28],
-  facing:355, bestSwell:315, swellHalf:60, exposure:0.95, minWave:0.4, driveKm:60, driveMin:55,
+  swellNeed:"NW windswell; usually the first spot to get a small wave when everything else is flat",
+  idealWind:"W–SW; too far south and the dunes and forest block the wind",
+  desc:"Long NW-facing beach backed by Tisvilde Hegn. Spot guides say a small wave usually forms here first when the rest of the coast is flat, so it's the one to check on marginal days.",
+  hazards:"Big NW onshore days are a washing machine – pick the clean-up.", parking:"Large car park on the beach"},
+ {id:"rageleje", rocks:1, piers:false, rips:1, current:0, name:"Rågeleje", area:"Gribskov", lat:56.098, lon:12.150, sea:[56.12,12.14], sea2:[56.15,12.12],
+  facing:345, bestSwell:320, swellHalf:55, exposure:0.95, minWave:0.4, windBest:[205,250], driveKm:62, driveMin:60,
+  bottom:"Pebbles, a few stones near shore, old groyne", level:"Novice → intermediate",
+  swellNeed:"W–NW windswell; S wind makes no waves",
+  idealWind:"SW – blows cross/side-shore, 'top waves' in SW",
+  desc:"Pebble beach where the Copenhagen windsurf crowd meets. Guides describe the waves as not very big but clean and steep, at their best in SW wind; with a straight S wind no waves develop.",
+  hazards:"Old groyne just under water in front of the lifeguard tower; stones near shore.", parking:"Large car park with toilet"},
+ {id:"udsholt", rocks:2, piers:false, rips:1, current:0, name:"Udsholt / Havstokke", area:"Gribskov", minSkill:2, lat:56.107, lon:12.212, sea:[56.13,12.21], sea2:[56.16,12.20],
+  facing:5, bestSwell:325, swellHalf:55, exposure:1.05, minWave:0.5, windBest:[255,295], driveKm:63, driveMin:60,
+  bottom:"Larger rocks at entry, sandbank outside", level:"Intermediate+ (experienced)",
+  swellNeed:"NW–N windswell 0.8 m+; a few degrees of wind angle decide whether it works",
+  idealWind:"W–WNW – it does NOT work when Rågeleje is sideshore (SW)",
+  desc:"Called the best wave spot in the area when it works: waves wrap fairly orderly around a headland and break with power over a sandbank. Meant for experienced surfers; no facilities.",
+  hazards:"Larger rocks at the entry and in the shallows; wind shadow near shore.", parking:"Top of the main road, walk to the beach steps (access road is residents only)"},
+ {id:"smidstrup", rocks:1, piers:false, rips:1, current:0, name:"Smidstrup", area:"Gribskov", lat:56.120, lon:12.255, sea:[56.145,12.25], sea2:[56.17,12.24],
+  facing:355, bestSwell:320, swellHalf:55, exposure:0.95, minWave:0.4, windBest:[245,275], driveKm:62, driveMin:58,
+  bottom:"Pebbles; beach and point", level:"Novice → intermediate",
+  swellNeed:"W–NW windswell",
+  idealWind:"W–WSW (side-shore)",
+  desc:"Pebble beach-and-point between Udsholt and Gilleleje. Goes sideshore in W–WSW. Enter east of the bathing ladders.",
+  hazards:"Pebbles and stones; don't use the private paths to the beach.", parking:"Beach car park via Sognevej (toilet, lifeguard post)"},
+ {id:"gilleleje", rocks:1, piers:true, rips:1, current:0, tide:"lowmid", name:"Gilleleje", area:"Gribskov", lat:56.124, lon:12.292, sea:[56.15,12.29], sea2:[56.18,12.28],
+  facing:0, bestSwell:315, swellHalf:60, exposure:0.85, minWave:0.4, windBest:[260,300], driveKm:60, driveMin:55,
   bottom:"Sand and stones, harbour piers", level:"All levels",
-  swellNeed:"WNW–N windswell from a NW blow across the Kattegat",
-  idealWind:"W (side-offshore) with a WNW sea",
-  desc:"Northernmost point of Zealand. West of the harbour faces due north; the classic setup is a WNW windswell with a W wind cleaning it up.",
-  hazards:"Pier structures; shallow stones near shore.", parking:"Gilleleje Vesterstrand"},
- {id:"hornbaek", rocks:1, piers:true, rips:1, current:0, name:"Hornbæk", area:"Helsingør", lat:56.094, lon:12.462, sea:[56.12,12.47], sea2:[56.15,12.47],
-  facing:15, bestSwell:345, swellHalf:60, exposure:0.9, minWave:0.4, driveKm:50, driveMin:50,
-  bottom:"Sand with stones; rocks along the Plantage", level:"All levels",
-  swellNeed:"NW–N windswell; N/NW 9 m/s+",
-  idealWind:"SW–W (side-off/offshore)",
-  desc:"NNE-facing beach from the harbour east to Hornbæk Plantage. Picks up N windswell Gilleleje misses and goes side-offshore in westerlies. Closest north-coast break to Copenhagen.",
-  hazards:"Harbour moles; rocky patches.", parking:"Hornbæk Havn / Plantage"},
+  swellNeed:"WNW–N windswell; best when a strong NW blows for a few hours and then swings W",
+  idealWind:"W–WNW (works east of the harbour in WNW when spots to the west go onshore)",
+  desc:"Northernmost point of Zealand. The harbour pier organises the waves but they're usually a bit smaller than elsewhere. Classic setup: a few hours of strong NW, then the wind swings W and lines the chop up. Walk out on the pier to check – you can't judge it from the car park.",
+  hazards:"Pier structures; stones near shore.", parking:"Gilleleje Vesterstrand / harbour"},
+ {id:"munkerup", rocks:2, piers:false, rips:1, current:0, name:"Munkerup", area:"Gribskov", minSkill:1, lat:56.108, lon:12.405, sea:[56.13,12.40], sea2:[56.16,12.40],
+  facing:10, bestSwell:335, swellHalf:55, exposure:0.95, minWave:0.45, driveKm:55, driveMin:50,
+  bottom:"Offshore sandbank, rocks closer in", level:"Novice → intermediate",
+  swellNeed:"NW–N windswell – comes alive when the wind turns further north",
+  idealWind:"NW–N builds it; any W–SW easing cleans it",
+  desc:"Sandbank off Munkerup gives good waves when the wind goes NW–N. Rocks limit the surfable area. No facilities and a longer walk from the forest car park.",
+  hazards:"Rocks restrict the area.", parking:"Forest car park, longer walk"},
+ {id:"hornbaek", rocks:1, piers:true, rips:1, current:0, tide:"lowmid", name:"Hornbæk", area:"Helsingør", lat:56.094, lon:12.462, sea:[56.12,12.47], sea2:[56.15,12.47],
+  facing:15, bestSwell:345, swellHalf:60, exposure:0.85, minWave:0.45, windBest:[200,290], driveKm:50, driveMin:50,
+  bottom:"Fine sand east of the harbour; rocks along the Plantage", level:"All levels",
+  swellNeed:"Needs a proper NW–N sea – the harbour pier shapes it into surfable waves",
+  idealWind:"S–W (offshore/side-off for this NNE-facing beach)",
+  desc:"Surfed east of the harbour; the pier shapes the waves when there's enough sea running. One of the earliest surf spots on Zealand and the closest north-coast break to Copenhagen.",
+  hazards:"Harbour moles; rocky patches along the Plantage.", parking:"By the harbour – 30 min limit with parking disc, enforced"},
  {id:"aalsgaarde", rocks:0, piers:false, rips:0, current:0, shallow:true, name:"Ålsgårde / Hellebæk", area:"Helsingør", lat:56.074, lon:12.545, sea:[56.095,12.57], sea2:[56.12,12.60],
-  facing:25, bestSwell:0, swellHalf:55, exposure:0.8, minWave:0.4, driveKm:45, driveMin:45,
-  bottom:"Sand, mostly lefts", level:"Beginner → intermediate",
-  swellNeed:"N windswell; Kullen blocks the NNE, NW sea runs along the coast",
-  idealWind:"W–SW (offshore)",
-  desc:"Where the Kattegat meets Øresund. Sheltered from westerlies so it can be the clean option, but it needs a real N sea to get waves at all.",
+  facing:25, bestSwell:335, swellHalf:50, exposure:0.8, minWave:0.4, windBest:[200,260], driveKm:45, driveMin:45,
+  bottom:"Sand, mostly lefts", level:"Beginner → novice",
+  swellNeed:"W–N windswell, NW best; Kullen blocks the NE",
+  idealWind:"SW–W (offshore)",
+  desc:"Where the Kattegat meets Øresund. Breaks mostly left over sand. Sheltered and usually small – needs a solid NW–N sea to get going.",
   hazards:"Shallow at low water; small most of the time.", parking:"Ålsgårde Strand / Hellebæk"}
 ];
 const INTERIOR = [[56.30,11.80],[56.35,12.20],[56.70,11.90],[56.60,12.40],[57.00,11.60],[56.15,11.50]];
@@ -140,24 +161,52 @@ function reqSkill(spot, hb, ws){
   if(ws!=null && ws>=12) r++;
   return Math.min(4,r);
 }
+/* local knowledge: the wind range the spot guides name as best for this spot */
+function inBest(spot, wd){ const b=spot.windBest; if(!b||wd==null) return false; const lo=b[0]-10, hi=b[1]+10, d=((wd%360)+360)%360; return lo<=hi? d>=lo&&d<=hi : d>=lo||d<=hi; }
+function spotWind(spot, rel, ws, wd){ let w=windScore(rel,ws); if(inBest(spot,wd)&&ws>=3&&ws<=13) w=Math.max(w, ws<10?0.8:0.65); return w; }
+/* wave shape: short, steep windswell closes out; 0 = jumbled, 1 = lined up */
+function steepness(Hs,T){ return Hs&&T? Hs/(1.56*T*T) : null; }
+function shapeScore(Hs,T){ const st=steepness(Hs,T); if(st==null) return 0.7; return clamp(1-(st-0.025)/0.03,0.3,1); }
 function quality(spot, Hs, T, dir, ws, wd, cal){
   const hb = breaking(spot, Hs, dir, cal);
   if(hb==null||ws==null) return {q:null,hb};
   const rel = windRel(spot, wd);
-  let q = sizeScore(hb, spot.minWave)*(0.3+0.7*windScore(rel,ws))*(0.55+0.45*periodScore(T));
+  let q = sizeScore(hb, spot.minWave)*(0.3+0.7*spotWind(spot,rel,ws,wd))*(0.55+0.45*periodScore(T))*(0.8+0.2*shapeScore(Hs,T));
   if(cal && cal.qBias && q>0.05) q = clamp(q+cal.qBias,0,1);
   const req = reqSkill(spot, hb, ws); q *= SK.skillPenalty(req, SKILL_LVL);
   return {q, hb, rel, req, above: req>SKILL_LVL};
 }
 
+/* surface: how clean or messy the water is */
+const SURF_LV=[{t:"Glassy",c:"#0e5fd8"},{t:"Clean",c:"#1fa463"},{t:"Light texture",c:"#7cc46a"},{t:"Choppy",c:"#f2b01e"},{t:"Messy",c:"#f07a2a"},{t:"Blown out",c:"#e5484d"}];
+function surfaceLvl(spot, h){
+  const P=h&&h.P; if(!P||P.ws==null) return null;
+  const ws=P.ws, lab=windLabel(P.rel,ws); let l;
+  if(ws<2.5) l=0;
+  else if(lab==="offshore"||lab==="side-off") l= ws<8?1:ws<12?2:4;
+  else if(lab==="cross-shore") l= ws<5?2:ws<9?3:ws<12?4:5;
+  else l= ws<4?2:ws<7?3:ws<11?4:5;
+  if(inBest(spot,P.wd)&&l>1&&ws<11) l--;
+  const st=steepness(P.Hs,P.T); if(st!=null&&st>0.045&&l>=1&&l<5&&lab!=="offshore") l++;
+  if(h.cleanup&&l>1) l--;
+  return clamp(l,0,5);
+}
+function surfChip(l){ if(l==null) return ""; const L=SURF_LV[l]; return `<span class="hzc" style="--c:${L.c};--b:#f3f5f7">${L.t}</span>`; }
+function surfWhy(spot,h){ const P=h.P||{}, st=steepness(P.Hs,P.T); const bits=[];
+  bits.push(`${compass(P.wd)} ${fmt(P.ws,0)} m/s ${windLabel(P.rel,P.ws)}`);
+  if(inBest(spot,P.wd)) bits.push("the wind direction locals rate best here");
+  if(st!=null) bits.push(st>0.045?"short, steep windswell – sections close out":st>0.035?"typical short Kattegat chop":"waves fairly organised");
+  if(h.cleanup) bits.push("clean-up after the blow – lining up");
+  return bits.join(" · "); }
+
 /* ============================ fetch geometry (precomputed once) ============================ */
 const FETCH = {};
 function initFetch(){
-  const cached = load("nk_fetch_v3");
+  const cached = load("nk_fetch_v4");
   if(cached){ for(const k in cached) FETCH[k]={rays:cached[k].rays, eff:Float32Array.from(cached[k].eff)}; return; }
   const out={};
   SPOTS.forEach(s=>{ const t=K.fetchTable(s.sea[0],s.sea[1]); FETCH[s.id]=t; out[s.id]={rays:t.rays,eff:Array.from(t.eff)}; });
-  store("nk_fetch_v3", out);
+  store("nk_fetch_v4", out);
 }
 /* generation wind for a spot: sea-point wind + wind further up the fetch */
 function nearestInterior(lat, lon){ let b=0,bd=1e9; INTERIOR.forEach((p,i)=>{const d=(p[0]-lat)**2+((p[1]-lon)*0.56)**2; if(d<bd){bd=d;b=i}}); return b; }
@@ -271,7 +320,7 @@ function windows(M){
 
 /* ============================ climatology (5 y ERA5 through KWM) ============================ */
 async function fetchClimate(){
-  const c=load("nk_clim_v4_"+SKILL_LVL); if(c&&Date.now()-c.at<7*864e5) return c;
+  const c=load("nk_clim_v5_"+SKILL_LVL); if(c&&Date.now()-c.at<7*864e5) return c;
   const end=new Date(Date.now()-7*864e5), start=new Date(end); start.setFullYear(end.getFullYear()-5);
   const d=x=>x.toISOString().slice(0,10);
   const j=await getJSON(`https://archive-api.open-meteo.com/v1/archive?latitude=56.35&longitude=12.05&start_date=${d(start)}&end_date=${d(end)}&hourly=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&timeformat=unixtime`);
@@ -285,7 +334,7 @@ async function fetchClimate(){
       M[m].dl++; M[m].days[dk]=1; if(q>=GOOD_Q){ M[m].g++; M[m].gd[dk]=(M[m].gd[dk]||0)+1; } });
     res[s.id]=M.map(x=>({pct:x.dl?x.g/x.dl:0, days:Object.values(x.gd).filter(v=>v>=2).length/Math.max(1,Object.keys(x.days).length)*30.4}));
   });
-  store("nk_clim_v4_"+SKILL_LVL,res); return res;
+  store("nk_clim_v5_"+SKILL_LVL,res); return res;
 }
 
 /* ============================ sessions + learning ============================ */
@@ -361,14 +410,20 @@ function spotSlots(S){
     const peak=S.hours[pk].p, ok=i=>idx.includes(i)&&S.hours[i].p>=Math.max(peak*0.75,peak-0.12);
     let a=pk, b=pk; while(b-a<3){ const L=ok(a-1), R=ok(b+1); if(!L&&!R) break; if(R&&(!L||S.hours[b+1].p>=S.hours[a-1].p)) b++; else a--; }
     const hs=S.hours.slice(a,b+1);
-    out.push({S, hours:hs, start:hs[0].t, end:hs[hs.length-1].t+3600, peakH:S.hours[pk], pPeak:peak, pAvg:hs.reduce((x,h)=>x+h.p,0)/hs.length});
+    // how long rideable waves last around the peak (any hour, q >= Poor–Fair), and trend
+    let r0=pk, r1=pk; const ride=i=>S.hours[i]&&S.hours[i].q!=null&&S.hours[i].q>=0.3;
+    while(ride(r0-1)) r0--; while(ride(r1+1)) r1++;
+    const later=S.hours[pk+3], hb0=S.hours[pk].P&&S.hours[pk].P.hb, hb3=later&&later.P&&later.P.hb;
+    const trend= hb0==null||hb3==null?"":hb3>hb0*1.15?"building":hb3<hb0*0.85?"fading":"holding";
+    out.push({S, hours:hs, start:hs[0].t, end:hs[hs.length-1].t+3600, peakH:S.hours[pk], pPeak:peak, pAvg:hs.reduce((x,h)=>x+h.p,0)/hs.length,
+      ride:ride(pk)?(r1-r0+1):0, rideFrom:S.hours[r0].t, rideTo:S.hours[r1].t+3600, trend});
   });
   return out.sort((x,y)=>y.pPeak-x.pPeak);
 }
 function allSlots(M){ return M.spots.flatMap(spotSlots).sort((a,b)=>b.pPeak-a.pPeak); }
 /* top 3 distinct options: skip slots overlapping in time with one already picked */
 function top3(slots){ return slots.filter(s=>s.pPeak>=0.05).slice(0,3); }
-function bindSkill(){ document.querySelectorAll('input[name="sk"]').forEach(r=>r.onchange=async()=>{ SKILL_LVL=+r.value; store("nk_skill",SKILL_LVL); CLIM=load("nk_clim_v4_"+SKILL_LVL); if(RAW) rebuild(); route();
+function bindSkill(){ document.querySelectorAll('input[name="sk"]').forEach(r=>r.onchange=async()=>{ SKILL_LVL=+r.value; store("nk_skill",SKILL_LVL); CLIM=load("nk_clim_v5_"+SKILL_LVL); if(RAW) rebuild(); route();
   try{ CLIM=await fetchClimate(); rebuild(); route(); }catch(e){} }); }
 function topCard(sl, i){ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak), p=plan(s, sl.start, sl.end);
   return `<a class="topc" href="#spot-${s.id}" data-t="${sl.peakH.t}"><span class="rank">#${i+1}</span>
@@ -376,6 +431,7 @@ function topCard(sl, i){ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak), p=pl
     <span class="small">🚗 Leave by <b>${tHr(p.leave)}</b> · ${rangeTxt(sl.peakH)} m · ${windLabel(P.rel,P.ws)}</span>
     <span>${chip(sl.peakH.q)} ${SK.skillChip(P.req, SKILL_LVL)} ${hzChip(safety(sl.S,sl.peakH).lvl,"Safety:")} ${matChip(maturity(sl.S,sl.peakH),"Forecast:")}</span></div>
     <div class="topc-p"><b>${pct(sl.pPeak)}</b><span class="tier ${T.c}">${T.t}</span></div></a>`; }
+function lastsTxt(sl){ return sl.ride?`waves rideable ~${sl.ride} h (${tHr(sl.rideFrom)}–${tHr(sl.rideTo)})${sl.trend?", "+sl.trend:""}`:"short window"; }
 function plan(spot, start, end){
   const leave=start-(spot.driveMin+15)*60, arrive=start-15*60, home=end+spot.driveMin*60, sun=sunFor(start);
   return {leave, arrive, home, firstLight: sun.rise, dark: sun.set};
@@ -395,7 +451,7 @@ function whyHtml(S, h){
     lines.push(`<b>Setup:</b> ${compass(g.dir)} ${fmt(g.U,0)} m/s over the Kattegat${h.dur>=2?` for ${h.dur} h`:""} · ${fe} km of open water toward ${esc(s.name)} → <b>${fmt(P.Hs)} m windswell at ${fmt(P.T)} s</b> from ${compass(P.dir)}.`);
   }
   const lab=windLabel(P.rel,P.ws);
-  lines.push(`<b>At the beach:</b> ${compass(P.wd)} ${fmt(P.ws,0)} m/s = <b>${lab}</b> for a ${compass(s.facing)}-facing beach → ${lab==="offshore"||lab==="side-off"||lab==="glassy"?"clean faces":lab==="cross-shore"?"some texture":"bumpy, wind-chopped"}.`);
+  { const sv=surfaceLvl(s,h); lines.push(`<b>At the beach:</b> ${compass(P.wd)} ${fmt(P.ws,0)} m/s = <b>${lab}</b> for a ${compass(s.facing)}-facing beach → surface <b>${sv!=null?SURF_LV[sv].t.toLowerCase():"–"}</b>${inBest(s,P.wd)?" (the wind direction locals rate best here)":""}. ${(()=>{const st=steepness(P.Hs,P.T);return st==null?"":st>0.045?"Short, steep windswell – expect close-outs.":st>0.035?"Typical short Kattegat chop.":"Fairly organised lines."})()}`); }
   let trend = h.cleanup ? "Wind easing/turning after the blow – the classic Kattegat clean-up window." : (h.growing&&P.rel<70&&P.ws>8) ? "Sea still building under onshore wind – size up, quality down." : "";
   lines.push(`<b>Verdict:</b> ${RATINGS[Math.max(0,ratingIdx(h.q))].t}, ${sizeWords(P.hb).toLowerCase()} (${rangeTxt(h)} m), <b>${pct(h.p)} chance</b> of a good session. ${trend}`);
   if(P.req!=null) lines.push(`<b>Skill:</b> needs <b>${SK.SKILLS[P.req].t}</b> – ${SK.SKILLS[P.req].can.charAt(0).toLowerCase()+SK.SKILLS[P.req].can.slice(1)}${P.above?` <b>That is above your level (${SK.SKILLS[SKILL_LVL].t})</b> – rated down.`:""}`);
@@ -661,13 +717,13 @@ function renderHome(){
       <div class="hero-p"><b>${pct(sl.pPeak)}</b><span>chance of a<br>good session</span></div></div>
       <div class="hero-surf"><span class="big">${rangeTxt(sl.peakH)}<small>m</small></span><span>${sizeWords(P.hb)}<br>${chip(sl.peakH.q)} ${SK.skillChip(P.req, SKILL_LVL)}</span></div>
       <div class="hero-meta">${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s · ${windLabel(P.rel,P.ws)} · ${fmt(P.Hs)} m @ ${fmt(P.T)} s from ${compass(P.dir)}</div>
-      ${planHtml(s, sl)}<div class="sfl">${hzChip(safety(sl.S,sl.peakH).lvl,"Safety:")} ${matLine(sl.S, sl.peakH)}</div>${gearHtml(sl.S, sl.peakH, true)}</a>`; };
+      ${planHtml(s, sl)}<div class="sfl">${surfChip(surfaceLvl(s,sl.peakH))} <span class="small">⏱ ${lastsTxt(sl)}</span></div><div class="sfl">${hzChip(safety(sl.S,sl.peakH).lvl,"Safety:")} ${matLine(sl.S, sl.peakH)}</div>${gearHtml(sl.S, sl.peakH, true)}</a>`; };
   const heroes=tops.map((sl,i)=>heroCard(sl,i+1)).join("");
   const rest=slots.slice(tops.length).filter(x=>x.pPeak>=0.03).slice(0,10);
   const list = rest.map((sl,i)=>{ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak), pl=plan(s,sl.start,sl.end), mt=maturity(sl.S,sl.peakH);
     return `<details class="slot"><summary>
       <span class="slot-p"><b>${pct(sl.pPeak)}</b><span class="tier ${T.c}">${T.t}</span></span>
-      <span class="slot-main"><b>#${i+tops.length+1} ${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span><span class="small">${arrow(P.wd,12)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s ${windLabel(P.rel,P.ws)} · ${fmt(P.Hs)} m @ ${fmt(P.T)} s · leave ${tHr(pl.leave)}</span><span class="slot-tags">${hzChip(safety(sl.S,sl.peakH).lvl,"Safety:")}${matChip(mt,"Forecast:")}</span></span>
+      <span class="slot-main"><b>#${i+tops.length+1} ${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span><span class="small">${arrow(P.wd,12)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s ${windLabel(P.rel,P.ws)} · ${fmt(P.Hs)} m @ ${fmt(P.T)} s · leave ${tHr(pl.leave)}</span><span class="small muted">⏱ ${lastsTxt(sl)}</span><span class="slot-tags">${surfChip(surfaceLvl(s,sl.peakH))}${hzChip(safety(sl.S,sl.peakH).lvl,"Safety:")}${matChip(mt,"Forecast:")}</span></span>
       <span class="slot-r">${chip(sl.peakH.q)}<span>${rangeTxt(sl.peakH)} m waves</span><span class="small muted">${P.req!=null?SK.SKILLS[P.req].t:""} · ${HZ_LV[safety(sl.S,sl.peakH).lvl].t.toLowerCase()}</span></span></summary>
       ${planHtml(s, sl)}<div class="sfl">${safetyLine(sl.S, sl.peakH)}</div><div class="sfl">${matLine(sl.S, sl.peakH)}</div>${gearHtml(sl.S, sl.peakH, true)}${whyHtml(sl.S, sl.peakH)}${locHtml(s)}
       <a class="btn small-btn" href="#spot-${s.id}" data-t="${sl.peakH.t}">Open ${esc(s.name)} forecast →</a></details>`; }).join("");
@@ -732,7 +788,7 @@ function renderSpot(id){
     return `<button class="dtab ${dk===VIEW.day?"on":""}" data-d="${dk}"><span>${tWd(S.hours.find(h=>dayKey(h.t)===dk).t)}</span><b>${sl?pct(sl.pPeak):"–"}</b><em>${sl?rangeTxt(sl.peakH)+" m":""}</em>${sl?`<em class="mt" style="color:${MAT_LV[maturity(S,sl.peakH).lvl].c}">${MAT_LV[maturity(S,sl.peakH).lvl].t}</em>`:""}<i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i></button>`; }).join("");
   const dh=S.hours.filter(h=>dayKey(h.t)===VIEW.day&&(VIEW.night||h.day||h.t===sel.t));
   const rows=dh.map(h=>{ const p=h.P||{}; return `<tr class="${h.t===sel.t?"sel":""} ${h.past?"past":""}" data-t="${h.t}">
-     <td>${tHr(h.t)}</td><td><b>${pct(h.p)}</b></td><td>${p.above?`<span class="chip" style="--c:${SK.SKILLS[p.req].c}">${SK.SKILLS[p.req].t}+</span>`:chip(h.q)}</td><td class="num"><b>${rangeTxt(h)}</b></td><td>${p.req!=null?`<span class="chip" style="--c:${SK.SKILLS[p.req].c}">${SK.SKILLS[p.req].short}</span>`:"–"}</td><td>${h.P?hzChip(safety(S,h).lvl):"–"}</td>
+     <td>${tHr(h.t)}</td><td><b>${pct(h.p)}</b></td><td>${p.above?`<span class="chip" style="--c:${SK.SKILLS[p.req].c}">${SK.SKILLS[p.req].t}+</span>`:chip(h.q)}</td><td class="num"><b>${rangeTxt(h)}</b></td><td>${p.req!=null?`<span class="chip" style="--c:${SK.SKILLS[p.req].c}">${SK.SKILLS[p.req].short}</span>`:"–"}</td><td>${h.P?surfChip(surfaceLvl(s,h)):"–"}</td><td>${h.P?hzChip(safety(S,h).lvl):"–"}</td>
      <td class="num">${fmt(p.Hs)}<small> m</small> ${fmt(p.T,0)}<small>s</small> <span class="muted">${compass(p.dir)}</span></td>
      <td class="num">${arrow(p.wd,13)} ${fmt(p.ws,0)}<small>${h.gust!=null?"–"+fmt(h.gust,0):""}</small> <span class="muted">${p.ws!=null?windLabel(p.rel,p.ws):""}</span></td></tr>`; }).join("");
   const sims=similarSessions(s.id, P), mySess=SESSIONS.filter(x=>x.spot===s.id).sort((a,b)=>b.start-a.start);
@@ -753,6 +809,8 @@ function renderSpot(id){
        <div><span>Water</span><b>${fmt(waterTemp(S,sel),0)}°C</b><em>air ${fmt(sel.temp,0)}°C</em></div>
        <div><span>Level</span><b>${sel.sl!=null?(sel.sl>0?"+":"")+fmt(sel.sl*100,0):"–"}</b><em>cm vs mean</em></div>
      </div>
+     <div class="sfl">${surfChip(surfaceLvl(s,sel))} <span class="small">${surfWhy(s,sel)}</span></div>
+     ${selSlot?`<div class="sfl small">⏱ ${lastsTxt(selSlot)}</div>`:""}
      ${selSlot?planHtml(s, selSlot):""}
    </div>
    ${maturityCard(S, sel)}
@@ -765,7 +823,7 @@ function renderSpot(id){
    <div class="dtabs">${tabs}</div>
    <div class="card"><div class="ch-h"><h3>Hour by hour</h3><label class="tog"><input type="checkbox" id="night" ${VIEW.night?"checked":""}> night</label></div>
      <div id="dayChart"></div>
-     <div class="tbl-wrap"><table class="hours"><thead><tr><th>Time</th><th>Chance</th><th>Rating</th><th>Wave height m</th><th>Skill</th><th>Safety</th><th>Windswell</th><th>Wind m/s</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+     <div class="tbl-wrap"><table class="hours"><thead><tr><th>Time</th><th>Chance</th><th>Rating</th><th>Wave height m</th><th>Skill</th><th>Surface</th><th>Safety</th><th>Windswell</th><th>Wind m/s</th></tr></thead><tbody>${rows}</tbody></table></div></div>
    <div class="card"><h3>Location</h3>${locHtml(s)}<div class="mapbox small-map" id="spMap"></div><p class="small muted">Google Maps satellite view of the beach. Tap the route links for live traffic.</p></div>
    <div class="card"><h3>What makes ${esc(s.name)} work</h3><p>${esc(s.desc)}</p>
      <dl class="kv"><dt>Needs</dt><dd>${esc(s.swellNeed)}</dd><dt>Best wind</dt><dd>${esc(s.idealWind)}</dd><dt>Bottom</dt><dd>${esc(s.bottom)}</dd><dt>Level</dt><dd>${esc(s.level)}</dd><dt>Hazards</dt><dd>${esc(s.hazards)}</dd></dl>
@@ -868,6 +926,11 @@ function ratingsCard(){
    <table class="cmp">${RATING_DEF.map(([n,r,d])=>{const R=RATINGS.find(x=>x.t===n);return `<tr><td><span class="chip" style="--c:${R.c}">${n}</span></td><td class="small">q ${r}</td><td class="small">${d}</td></tr>`}).join("")}</table>
    <h3 style="margin-top:14px">What the % means</h3>
    <p class="small"><b>Chance of a good session</b> = probability the hour rates <b>Fair or better</b>. It combines three runs – Kattegat model with DMI wind (50%), with ECMWF wind (20%) and DWD's EWAM wind-sea (30%) – and leans on the spot's 5-year history the further ahead you look. <b>Go</b> ≥ 60% · <b>Worth a look</b> 40–60% · <b>Long shot</b> 20–40%.</p>
+   <h3 style="margin-top:14px">Surface – clean or messy</h3>
+   <table class="cmp small">${SURF_LV.map((L,i)=>`<tr><td>${surfChip(i)}</td><td>${["Under 2.5 m/s – mirror-like.","Offshore/side-off under 8 m/s – groomed faces.","Light wind or cross-shore under 5 m/s – a little ruffle.","Cross-shore 5–9 m/s or light onshore – bumpy but rideable.","Onshore 7–11 m/s or cross-shore 9–12 m/s – wind chop on the faces.","Onshore 11 m/s+ – washing machine."][i]}</td></tr>`).join("")}</table>
+   <p class="small muted">One step cleaner when the wind is from the direction locals rate best for that spot, or in a clean-up after a blow. One step messier when the windswell is very short and steep (height ÷ period² high) – that's when Kattegat waves close out. "Waves rideable ~N h" counts the hours around the peak rated Poor–Fair or better, and whether the sea is building, holding or fading.</p>
+   <h3 style="margin-top:14px">Spot knowledge used</h3>
+   <p class="small">Each spot's best wind, swell window and character come from published spot guides, mainly the SURF magazine North Zealand guide (written with local surfers), plus Surfnerd, surf-forecast.com and the Kite & Windsurfing Guide. Key rules: the further W–N the wind, the further east along the coast you go; Kattegat waves only exist while it blows hard; SW is best at Liseleje and Rågeleje, W–SW at Tisvildeleje, W–WNW at Udsholt (not when Rågeleje is sideshore), W–WSW at Smidstrup, WNW at Gilleleje, NW–N at Munkerup; Hornbæk needs a proper sea for the pier to shape it.</p>
    <h3 style="margin-top:14px">Forecast maturity</h3>
    <table class="cmp small">${MAT_LV.slice().reverse().map(L=>`<tr><td>${matChip({lvl:MAT_LV.indexOf(L)})}</td><td>${L.d}</td></tr>`).join("")}</table>
    <p class="small muted">Score 0–100 = 60% lead time (halves roughly every 70 h) + 40% agreement between the three model runs on wave size and DMI vs ECMWF wind, minus up to 15 points if the forecast moved since your last check. Firm ≥ 72 · Fairly settled 55–72 · Likely to shift 38–55 · Early look &lt; 38.</p>
