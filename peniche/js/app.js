@@ -628,7 +628,7 @@ function oceanCard(M, g){
        <div class="strip-h">${d.hs.map(h=>`<i style="background:${h.cls.c}" title="${tHr(h.t)} ${h.cls.t}"></i>`).join("")}</div>
        <div class="small">${d.big.length?`<span class="warn-t">Too big for you:</span> ${d.big.join(", ")}. `:""}${d.lvl.length?`<span class="lvl-t">Above your level:</span> ${d.lvl.join(", ")}. `:""}${d.fits.length?`<b>For you:</b> ${d.fits.slice(0,3).join(", ")}.`:"<b>Nothing really for you.</b>"}</div></div>`; }).join("")}</div>
    <div class="legend-r small">${[["Clean groundswell","#1fa463"],["Moderate","#f2b01e"],["Small","#6da7ec"],["Mixed / lumpy","#f07a2a"],["Big & powerful","#7a3fbf"],["Stormy","#b42324"]].map(([t,c])=>`<span><i style="background:${c}"></i>${t}</span>`).join("")}</div>
-   <p class="small"><b>Today's read:</b> ${D[0].cls.d}</p></div>`;
+   <p class="small"><b>Today's read:</b> ${g.id==="ericeira"?D[0].cls.d.replace("(Molhe Leste, Cantinho da Baía)","(Praia do Sul, the inside at Ribeira d'Ilhas)"):D[0].cls.d}</p></div>`;
 }
 const REGION_SHORT = {
   peniche:`N wind (the summer nortada) → south side: Supertubos, Molhe Leste, Consolação. S–SE wind (autumn/winter) → north side: Baleal Norte, Lagide, Meio da Baía. E wind → almost everywhere is clean. Too big? → Molhe Leste and Cantinho da Baía see only about half the swell. W–SW wind is onshore nearly everywhere – then only Cantinho da Baía is semi-protected.`,
@@ -656,7 +656,7 @@ function regionSection(M, g, slots, days){
     const r=RS.map(S=>({S,h:S.hours.find(h=>h.t===t)})).filter(x=>x.h).sort((a,b)=>(b.h.p||0)-(a.h.p||0));
     cmp=`<div class="card"><h3>Why the pick differs by spot</h3>
       <p class="small muted">All ${g.name} spots at its best slot (${tDay(t)} ${tHr(t)}): same ocean – swell ${swellTxt(P0)}, wind ${compass(P0.wd)} ${fmt(P0.ws,0)} m/s – but each beach faces a different way, is sheltered differently and has a different bottom.</p>
-      <table class="cmp">${r.map(({S,h})=>`<tr><td><a href="#spot-${S.spot.id}" data-t="${t}"><b>${esc(S.spot.name)}</b></a><br><span class="muted small">faces ${compass(S.spot.facing)}</span></td><td>${h.P&&h.P.above?`<span class="chip" style="--c:${SK.SKILLS[h.P.req].c}">${SK.SKILLS[h.P.req].t}+</span>`:chip(h.q)}<br><b>${pct(h.p)}</b></td><td class="small">${reason(S,h)}</td></tr>`).join("")}</table></div>`;
+      <table class="cmp">${r.map(({S,h})=>`<tr><td><a href="#spot-${S.spot.id}" data-t="${t}"><b>${esc(S.spot.name)}</b></a><br><span class="muted small">faces ${compass(S.spot.facing)}</span></td><td>${h.P&&h.P.tooBig?`<span class="chip" style="--c:#7a3fbf">Too big</span>`:h.P&&h.P.above?`<span class="chip" style="--c:${SK.SKILLS[h.P.req].c}">Needs ${SK.SKILLS[h.P.req].t}</span>`:chip(h.q)}<br><b>${pct(h.p)}</b></td><td class="small">${reason(S,h)}</td></tr>`).join("")}</table></div>`;
   }
   const matrix=`<div class="card"><h3>Which wind is offshore where</h3>
     <div class="tbl-wrap"><table class="mx"><tr><th></th>${DIRS8.map(d=>`<th>${d[0]}</th>`).join("")}</tr>
@@ -677,11 +677,13 @@ function regionSection(M, g, slots, days){
     <div class="list">${RS.map(S=>spotRow(S, slots, days)).join("")}</div>
     ${cmp}${matrix}</section>`;
 }
-function dayTop3(slots, dk){ return slots.filter(s=>dayKey(s.start)===dk).slice(0,3); }
+const fitsYou = sl => sl.peakH.P && !sl.peakH.P.tooBig && !sl.peakH.P.above && sl.pPeak>=0.05;
+function dayTop3(slots, dk){ return slots.filter(s=>dayKey(s.start)===dk && fitsYou(s)).slice(0,3); }
 function renderDayTops(slots){
   const host=$("#dayTops"); if(!host) return;
   const L=dayTop3(slots, VIEW.hday);
-  host.innerHTML = (L.length&&L[0].pPeak<0.2?`<p class="small muted">No real session for you this day – best of a weak bunch:</p>`:"")+L.map((sl,i)=>topCard(sl,i)).join("") || `<p class="muted">No daylight forecast.</p>`;
+  host.innerHTML = !L.length ? `<p class="card small">Nothing in your size and level range this day – too big, too rough or too small everywhere. A day to rest, watch, or take a lesson.</p>`
+    : (L[0].pPeak<0.2?`<p class="small muted">No real session for you this day – best of a weak bunch:</p>`:"")+L.map((sl,i)=>topCard(sl,i)).join("")+(L.length<3?`<p class="small muted">Only ${L.length} option${L.length>1?"s":""} in your range this day.</p>`:"");
   host.querySelectorAll("[data-t]").forEach(a=>a.addEventListener("click",()=>{ VIEW.sel=+a.dataset.t; VIEW.day=dayKey(+a.dataset.t); }));
 }
 
@@ -700,8 +702,8 @@ function renderHome(){
   }
   const dks=[...new Set(slots.map(s=>dayKey(s.start)))].sort().slice(0,5);
   if(!VIEW.hday||!dks.includes(VIEW.hday)) VIEW.hday=dks[0];
-  const dtabs=dks.map(dk=>{ const b=slots.find(s=>dayKey(s.start)===dk), i=b?ratingIdx(b.peakH.q):-1;
-    return `<button class="dtab ${dk===VIEW.hday?"on":""}" data-hd="${dk}"><span>${tWd(b.start)}</span><b>${pct(b.pPeak)}</b><em>${esc(b.S.spot.name.split(" ")[0])}</em><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i></button>`; }).join("");
+  const dtabs=dks.map(dk=>{ const any=slots.find(s=>dayKey(s.start)===dk), b=slots.find(s=>dayKey(s.start)===dk&&fitsYou(s)), i=b?ratingIdx(b.peakH.q):-1;
+    return `<button class="dtab ${dk===VIEW.hday?"on":""}" data-hd="${dk}"><span>${tWd(any.start)}</span><b>${b?pct(b.pPeak):"–"}</b><em>${b?esc(b.S.spot.name.split(" ")[0]):"nothing"}</em><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i></button>`; }).join("");
   const days=[...new Set(M.spots[0].hours.filter(h=>!h.past&&h.day).map(h=>dayKey(h.t)))].slice(0,5);
   el.innerHTML = `${SK.skillBar(SKILL_LVL,"sk")}${comfortBar()}${tripCard()}
     <div class="sec-h"><h2>Top 3 for you · next 5 days</h2><span class="muted small">${SK.SKILLS[SKILL_LVL].t} · ≤ ${fmt(COMFORT_M)} m · both areas</span></div>
