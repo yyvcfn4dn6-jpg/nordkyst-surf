@@ -118,8 +118,8 @@ function windScore(rel, ws){
   if(rel>=135) return ws<9?1:ws<13?0.8:0.5;           // strong offshore = hard to paddle in, spray
   if(rel>=100) return ws<7?0.95:ws<10?0.8:ws<13?0.55:0.35;
   if(rel>=70)  return ws<5?0.8:ws<8?0.55:ws<11?0.35:0.2;
-  if(rel>=40)  return ws<4?0.7:ws<6?0.45:ws<9?0.28:0.12;
-  return ws<3.5?0.65:ws<5.5?0.38:ws<8?0.22:0.08;      // Atlantic onshore blows it out fast
+  if(rel>=40)  return ws<4?0.75:ws<6?0.5:ws<9?0.3:0.12;
+  return ws<3.5?0.7:ws<5.5?0.42:ws<8?0.24:0.08;       // groundswell holds shape in a light onshore; 8 m/s+ blows it out
 }
 /* size: rises to the spot minimum, full marks up to the comfort max, then drops hard */
 function sizeScore(hb, min, M){

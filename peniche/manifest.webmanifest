@@ -2,7 +2,7 @@
   "name": "Portugal Surf – Peniche & Ericeira forecast",
   "short_name": "Portugal Surf",
   "description": "Groundswell, wind and tide forecast for Peniche, Baleal and Ericeira surf spots, tuned to your comfort size.",
-  "start_url": "./#home",
+  "start_url": "./#peniche",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

@@ -595,9 +595,10 @@ function gearHtml(S, h, compact){
 function comfortBar(){
   return `<div class="comfort"><span>My max wave</span><div class="opts">${COMFORT.map(c=>`<label class="opt"><input type="radio" name="cm" value="${c.v}" ${c.v===COMFORT_M?"checked":""}><span>${c.t}</span></label>`).join("")}</div></div>`;
 }
-function bindSkill(){ document.querySelectorAll('input[name="sk"]').forEach(r=>r.onchange=async()=>{ SKILL_LVL=+r.value; store("pn_skill",SKILL_LVL); CLIM=load("pn_clim_v4_"+COMFORT_M+"_"+SKILL_LVL); if(RAW) rebuild(); route();
+const snapStats=()=>STATE?Object.fromEntries(REGIONS.map(g=>[g.id,filterStats(STATE,g,allSlots(STATE))])):null;
+function bindSkill(){ document.querySelectorAll('input[name="sk"]').forEach(r=>r.onchange=async()=>{ PREV_STATS=snapStats(); SKILL_LVL=+r.value; store("pn_skill",SKILL_LVL); CLIM=load("pn_clim_v4_"+COMFORT_M+"_"+SKILL_LVL); if(RAW) rebuild(); route();
   try{ CLIM=await fetchClimate(); rebuild(); route(); }catch(e){} }); }
-function bindComfort(){ document.querySelectorAll('input[name="cm"]').forEach(r=>r.onchange=async()=>{ COMFORT_M=+r.value; store("pn_comfort",COMFORT_M); CLIM=load("pn_clim_v4_"+COMFORT_M+"_"+SKILL_LVL); if(RAW) rebuild(); route();
+function bindComfort(){ document.querySelectorAll('input[name="cm"]').forEach(r=>r.onchange=async()=>{ PREV_STATS=snapStats(); COMFORT_M=+r.value; store("pn_comfort",COMFORT_M); CLIM=load("pn_clim_v4_"+COMFORT_M+"_"+SKILL_LVL); if(RAW) rebuild(); route();
   try{ CLIM=await fetchClimate(); rebuild(); route(); }catch(e){} }); }
 
 /* ocean state per day for one region (from its most exposed beach) */
@@ -647,7 +648,7 @@ function spotRow(S, slots, days){
       <div class="strip">${strip}</div></div>
     <div class="row-next">${b?`<b>${pct(b.pPeak)}</b><span>${tWd(b.start)} ${tHr(b.start)}</span>`:`<span class="muted">–</span>`}</div></a>`;
 }
-function regionSection(M, g, slots, days){
+function regionSection(M, g, slots, days, noHead){
   const RS=M.spots.filter(X=>X.spot.region===g.id), rSlots=slots.filter(x=>x.S.spot.region===g.id), top=rSlots[0];
   const spots=SPOTS.filter(s=>s.region===g.id);
   let cmp="";
@@ -669,7 +670,7 @@ function regionSection(M, g, slots, days){
     <div class="legend-r small"><span><span class="gi build">●</span> most of it</span><span><span class="gi small">◐</span> part</span><span><span class="gi small">○</span> little</span><span><span class="gi none">–</span> blocked</span></div>
     <p class="small"><b>In short:</b> ${REGION_SHORT[g.id]}</p></div>`;
   return `<section class="region" id="reg-${g.id}">
-    <div class="reg-h"><h2>${g.name}</h2>${top?`<span class="small">best: <b>${esc(top.S.spot.name)}</b> ${tWd(top.start)} ${tHr(top.start)} · ${pct(top.pPeak)}</span>`:""}</div>
+    ${noHead?"":`<div class="reg-h"><h2>${g.name}</h2>${top?`<span class="small">best: <b>${esc(top.S.spot.name)}</b> ${tWd(top.start)} ${tHr(top.start)} · ${pct(top.pPeak)}</span>`:""}</div>`}
     ${oceanCard(M, g)}
     <div class="sec-h"><h3>Map</h3><span class="muted small">tap a spot</span></div>
     <div class="mapbox" id="ovMap-${g.id}"></div>
@@ -687,40 +688,95 @@ function renderDayTops(slots){
   host.querySelectorAll("[data-t]").forEach(a=>a.addEventListener("click",()=>{ VIEW.sel=+a.dataset.t; VIEW.day=dayKey(+a.dataset.t); }));
 }
 
-function renderHome(){
-  const M=STATE, el=$("#view"), slots=allSlots(M), tops=top3(slots), top=tops[0]||slots[0];
-  let hero="";
-  if(top){
-    const s=top.S.spot, P=top.peakH.P, T=tier(top.pPeak);
-    hero=`<a class="hero" href="#spot-${s.id}" data-t="${top.peakH.t}">
-      <div class="hero-k">#1 · best slot for you · ${regOf(s).name} <span class="tier ${T.c}">${T.t}</span></div>
-      <div class="hero-row"><div><div class="hero-spot">${esc(s.name)}</div><div class="hero-when">${tDay(top.start)} · ${tHr(top.start)}–${tHr(top.end)}</div></div>
-      <div class="hero-p"><b>${pct(top.pPeak)}</b><span>chance of a<br>good session</span></div></div>
-      <div class="hero-surf"><span class="big">${rangeTxt(top.peakH)}<small>m</small></span><span>${sizeWords(P.hb)}<br>${chip(top.peakH.q)} ${cleanChip(P)}<br>${SK.skillChip(P.req, SKILL_LVL)}</span></div>
-      <div class="hero-meta">${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s · ${K.windLabel(P.rel,P.ws)} · swell ${swellTxt(P)} · tide ${tideTxt(top.peakH)}</div>
-      ${planHtml(s, top)}${gearHtml(top.S, top.peakH, true)}</a>`;
+/* ---------- hero card (blue) for a slot ---------- */
+function heroCard(sl, label){
+  const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak);
+  return `<a class="hero" href="#spot-${s.id}" data-t="${sl.peakH.t}">
+    <div class="hero-k">${label} <span class="tier ${T.c}">${T.t}</span></div>
+    <div class="hero-row"><div><div class="hero-spot">${esc(s.name)}</div><div class="hero-when">${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</div></div>
+    <div class="hero-p"><b>${pct(sl.pPeak)}</b><span>chance of a<br>good session</span></div></div>
+    <div class="hero-surf"><span class="big">${rangeTxt(sl.peakH)}<small>m</small></span><span>${sizeWords(P.hb)}<br>${chip(sl.peakH.q)} ${cleanChip(P)}<br>${SK.skillChip(P.req, SKILL_LVL)}</span></div>
+    <div class="hero-meta">${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s · ${K.windLabel(P.rel,P.ws)} · swell ${swellTxt(P)} · tide ${tideTxt(sl.peakH)}</div>
+    ${planHtml(s, sl)}${gearHtml(sl.S, sl.peakH, true)}</a>`;
+}
+
+/* ---------- what your filters do ---------- */
+function filterStats(M, g, slots){
+  const rs=slots.filter(x=>x.S.spot.region===g.id);
+  const good=rs.filter(x=>fitsYou(x)&&x.pPeak>=0.4);
+  const open=[...new Set(good.map(x=>x.S.spot.name))];
+  const big=new Set(), lvl=new Set();
+  rs.forEach(x=>{ const P=x.peakH.P; if(!P) return; if(P.tooBig) big.add(x.S.spot.name); else if(P.above) lvl.add(x.S.spot.name); });
+  return {n:good.length, open, big:[...big].filter(n=>!open.includes(n)), lvl:[...lvl].filter(n=>!open.includes(n)), at:SKILL_LVL+"|"+COMFORT_M};
+}
+let PREV_STATS=null;   // stats before the last filter change (shown once as "what changed")
+function effectCard(g, st){
+  const sk=SK.SKILLS[SKILL_LVL].t, cm=(COMFORT.find(c=>c.v===COMFORT_M)||{t:""}).t.toLowerCase();
+  let diff="";
+  if(PREV_STATS&&PREV_STATS[g.id]&&PREV_STATS[g.id].at!==st.at){
+    const p=PREV_STATS[g.id], added=st.open.filter(n=>!p.open.includes(n)), gone=p.open.filter(n=>!st.open.includes(n));
+    diff=`<div class="eff-diff">Changed: good windows <b>${p.n} → ${st.n}</b>${added.length?` · now open: <b>${added.join(", ")}</b>`:""}${gone.length?` · no longer for you: <b>${gone.join(", ")}</b>`:""}${!added.length&&!gone.length?" · same spots":""}</div>`;
   }
-  const dks=[...new Set(slots.map(s=>dayKey(s.start)))].sort().slice(0,5);
+  return `<div class="card eff"><div class="eff-h"><b>${sk}</b> · max <b>${cm} (${fmt(COMFORT_M)} m)</b></div>
+    <p class="small">→ <b>${st.n} good window${st.n===1?"":"s"}</b> (≥ 40 %) in ${g.name} over the next 5 days${st.open.length?` at <b>${st.open.join(", ")}</b>`:""}.</p>
+    ${st.big.length?`<p class="small"><span class="sw sw-big"></span>Too big for you this week: ${st.big.join(", ")}</p>`:""}
+    ${st.lvl.length?`<p class="small"><span class="sw sw-lvl"></span>Above your level this week: ${st.lvl.join(", ")}</p>`:""}
+    ${diff}
+    <p class="small muted">Level sets which waves you can handle (power, reef, currents); max wave cuts anything taller. Change them above and this list, the grid and the top 3s update.</p></div>`;
+}
+
+/* ---------- 5-day grid: spot × day ---------- */
+function glanceCard(M, g, slots){
+  const RS=M.spots.filter(X=>X.spot.region===g.id);
+  const days=[...new Set(RS[0].hours.filter(h=>!h.past&&h.day).map(h=>dayKey(h.t)))].slice(0,5);
+  const cell=(S,dk)=>{
+    const hs=S.hours.filter(h=>dayKey(h.t)===dk&&h.day&&!h.past&&h.P&&h.p!=null); if(!hs.length) return `<td class="gc gc-na">–</td>`;
+    const ok=hs.filter(h=>!h.P.tooBig&&!h.P.above), best=ok.reduce((a,h)=>!a||h.p>a.p?h:a,null);
+    if(best&&best.p>=0.12){ const i=ratingIdx(best.q); return `<td class="gc" style="--c:${RATINGS[i].c}" data-go="${S.spot.id}|${best.t}"><b>${pct(best.p)}</b><em>${tHr(best.t).slice(0,2)}h</em></td>`; }
+    if(hs.some(h=>h.P.tooBig)) return `<td class="gc gc-big" data-go="${S.spot.id}|${hs[0].t}">big</td>`;
+    if(hs.some(h=>h.P.above)) return `<td class="gc gc-lvl" data-go="${S.spot.id}|${hs[0].t}">level</td>`;
+    return `<td class="gc gc-flat" data-go="${S.spot.id}|${hs[0].t}">${best?pct(best.p):"–"}</td>`;
+  };
+  return `<div class="card"><h3>Next 5 days at a glance</h3>
+    <p class="small muted">Best chance per beach and day for <b>your</b> level and max wave (and the hour). Tap a cell to open it.</p>
+    <div class="tbl-wrap"><table class="glance"><tr><th></th>${days.map(dk=>`<th>${tWd(RS[0].hours.find(h=>dayKey(h.t)===dk).t)}</th>`).join("")}</tr>
+    ${RS.map(S=>`<tr><td class="gn"><a href="#spot-${S.spot.id}">${esc(S.spot.name)}</a></td>${days.map(dk=>cell(S,dk)).join("")}</tr>`).join("")}</table></div>
+    <div class="legend-r small">${RATINGS.slice(1).map(r=>`<span><i style="background:${r.c}"></i>${r.t}</span>`).join("")}<span><i style="background:#7a3fbf"></i>too big for you</span><span><i style="background:#b42324"></i>above your level</span></div></div>`;
+}
+
+/* ---------- region page ---------- */
+function renderRegion(gid){
+  const g=REGIONS.find(r=>r.id===gid)||REGIONS[0], other=REGIONS.find(r=>r.id!==g.id);
+  const M=STATE, el=$("#view"), slots=allSlots(M), rSlots=slots.filter(x=>x.S.spot.region===g.id);
+  const tops=top3(rSlots.filter(fitsYou)), st=filterStats(M,g,slots);
+  const dks=[...new Set(rSlots.map(s=>dayKey(s.start)))].sort().slice(0,5);
   if(!VIEW.hday||!dks.includes(VIEW.hday)) VIEW.hday=dks[0];
-  const dtabs=dks.map(dk=>{ const any=slots.find(s=>dayKey(s.start)===dk), b=slots.find(s=>dayKey(s.start)===dk&&fitsYou(s)), i=b?ratingIdx(b.peakH.q):-1;
+  const dtabs=dks.map(dk=>{ const any=rSlots.find(s=>dayKey(s.start)===dk), b=rSlots.find(s=>dayKey(s.start)===dk&&fitsYou(s)), i=b?ratingIdx(b.peakH.q):-1;
     return `<button class="dtab ${dk===VIEW.hday?"on":""}" data-hd="${dk}"><span>${tWd(any.start)}</span><b>${b?pct(b.pPeak):"–"}</b><em>${b?esc(b.S.spot.name.split(" ")[0]):"nothing"}</em><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i></button>`; }).join("");
   const days=[...new Set(M.spots[0].hours.filter(h=>!h.past&&h.day).map(h=>dayKey(h.t)))].slice(0,5);
-  el.innerHTML = `${SK.skillBar(SKILL_LVL,"sk")}${comfortBar()}${tripCard()}
-    <div class="sec-h"><h2>Top 3 for you · next 5 days</h2><span class="muted small">${SK.SKILLS[SKILL_LVL].t} · ≤ ${fmt(COMFORT_M)} m · both areas</span></div>
-    ${hero || `<div class="hero quiet"><div class="hero-spot">Nothing in your range</div><div class="hero-when">Check the ocean state per area below</div></div>`}
+  el.innerHTML = `<div class="reg-top"><h1>${g.name}</h1><a class="btn small-btn" href="#${other.id}">${other.name} →</a></div>
+    ${SK.skillBar(SKILL_LVL,"sk")}${comfortBar()}
+    ${effectCard(g, st)}
+    ${tripCard()}
+    <div class="sec-h"><h2>Top 3 · next 5 days</h2><span class="muted small">${g.name}</span></div>
+    ${tops[0]?heroCard(tops[0],"#1 · best slot for you"):`<div class="hero quiet"><div class="hero-spot">Nothing in your range</div><div class="hero-when">Too big, too rough or above your level all week – see the grid below${other?` or check ${other.name}`:""}.</div></div>`}
     <div class="tops">${tops.slice(1).map((sl,i)=>topCard(sl,i+1)).join("")}</div>
-    <div class="sec-h"><h2>Day by day · top 3</h2><span class="muted small">best three options each day</span></div>
+    <div class="sec-h"><h2>Day by day · top 3</h2><span class="muted small">tap a day</span></div>
     <div class="dtabs" id="hdTabs">${dtabs}</div>
-    <div class="tops" id="dayTops"></div>
-    <div class="jump">${REGIONS.map(g=>`<button class="btn small-btn" data-jump="${g.id}">↓ ${g.name}</button>`).join("")}</div>
-    ${REGIONS.map(g=>regionSection(M, g, slots, days)).join("")}
+    <div id="dayTops"></div>
+    ${glanceCard(M, g, slots)}
+    ${regionSection(M, g, slots, days, true)}
     <div class="legend-r">${RATINGS.map(r=>`<span><i style="background:${r.c}"></i>${r.t}</span>`).join("")}<span><i style="background:#7a3fbf"></i>Too big for you</span> <a href="#model" class="link">How ratings work →</a></div>`;
-  el.querySelectorAll("[data-t]").forEach(a=>a.addEventListener("click",()=>{ VIEW.sel=+a.dataset.t; VIEW.day=dayKey(+a.dataset.t); }));
-  el.querySelectorAll("[data-hd]").forEach(b=>b.onclick=()=>{ VIEW.hday=b.dataset.hd; el.querySelectorAll("[data-hd]").forEach(x=>x.classList.toggle("on",x===b)); renderDayTops(slots); });
-  el.querySelectorAll("[data-jump]").forEach(b=>b.onclick=()=>{ const t=document.getElementById("reg-"+b.dataset.jump); if(t) t.scrollIntoView({behavior:"smooth",block:"start"}); });
-  renderDayTops(slots);
+  const bindT=()=>el.querySelectorAll("[data-t]").forEach(a=>a.addEventListener("click",()=>{ VIEW.sel=+a.dataset.t; VIEW.day=dayKey(+a.dataset.t); }));
+  const dayTops=()=>{ const L=dayTop3(rSlots, VIEW.hday), host=$("#dayTops");
+    host.innerHTML = !L.length ? `<div class="hero quiet"><div class="hero-spot">Nothing for you this day</div><div class="hero-when">Too big, too rough or too small everywhere in ${g.name}. Rest, watch, or check ${other.name}.</div></div>`
+      : heroCard(L[0], `#1 · ${tDay(L[0].start)}`)+`<div class="tops">${L.slice(1).map((sl,i)=>topCard(sl,i+1)).join("")}</div>`+(L.length<3?`<p class="small muted">Only ${L.length} option${L.length>1?"s":""} in your range this day.</p>`:"");
+    bindT(); };
+  el.querySelectorAll("[data-hd]").forEach(b=>b.onclick=()=>{ VIEW.hday=b.dataset.hd; el.querySelectorAll("[data-hd]").forEach(x=>x.classList.toggle("on",x===b)); dayTops(); });
+  el.querySelectorAll("[data-go]").forEach(c=>c.onclick=()=>{ const [id,t]=c.dataset.go.split("|"); VIEW.sel=+t; VIEW.day=dayKey(+t); location.hash="#spot-"+id; });
+  dayTops(); bindT();
   bindComfort(); bindSkill(); bindTrip();
-  REGIONS.forEach(g=>drawOverviewMap(M, slots, g));
+  drawOverviewMap(M, slots, g);
 }
 
 /* ============================ SPOT ============================ */
@@ -729,7 +785,7 @@ function tideDayHtml(dk, reg){
   return `<div class="tides">${T.map(x=>`<span>${x.hi?"High":"Low"} <b>${tHr(x.t)}</b> <em>${x.h>0?"+":""}${fmt(x.h,1)} m</em></span>`).join("")}</div>`;
 }
 function renderSpot(id){
-  const S=STATE.spots.find(x=>x.spot.id===id); if(!S){ location.hash="#home"; return; }
+  const S=STATE.spots.find(x=>x.spot.id===id); if(!S){ location.hash="#peniche"; return; }
   const s=S.spot, future=S.hours.filter(h=>!h.past), slots=spotSlots(S);
   const days=[...new Set(S.hours.map(h=>dayKey(h.t)))].filter(dk=>S.hours.some(h=>dayKey(h.t)===dk&&!h.past));
   const nextDay=future.find(h=>h.day)||future[0]||S.hours[0];
@@ -752,7 +808,7 @@ function renderSpot(id){
   const guide=windGuide(s), selSlot=slots.find(x=>x.hours.includes(sel));
   const comps=(P.parts||[]).filter(c=>c.H>0.05).sort((a,b)=>b.H-a.H);
   $("#view").innerHTML=`
-   <div class="sp-head"><a class="back" href="#home" aria-label="Back">‹</a>
+   <div class="sp-head"><a class="back" href="#${s.region}" aria-label="Back">‹</a>
      <div><h1>${esc(s.name)}</h1><div class="muted">${esc(s.area)} · faces ${compass(s.facing)} · ${TRAVEL&&TRAVEL.spots[s.id]?TRAVEL.spots[s.id].min+" min from hotel":regOf(s).name}</div></div></div>
    <div class="now-card">
      <div class="now-top"><div><div class="muted small">${tDay(sel.t)} · ${tHr(sel.t)}${sel.past?" (past)":""}</div>
@@ -948,10 +1004,39 @@ function renderLog(preSpot){
 function bindDeletes(){ document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ const i=SESSIONS.findIndex(x=>x.id===b.dataset.del);
   if(i>=0&&b.dataset.armed){ SESSIONS.splice(i,1); saveSessions(); CAL=calibrate(); if(RAW) rebuild(); route(); } else { b.dataset.armed=1; b.textContent="tap again to delete"; } }); }
 
+/* ---------- model check: do the three wave models agree for Portugal? ---------- */
+function modelCompareCard(){
+  if(!RAW||!RAW.Wv) return "";
+  const now=Date.now()/1000;
+  const rows=REGIONS.map((g,ri)=>{
+    const wv=RAW.Wv[ri]; if(!wv) return "";
+    const T=wv.hourly.time, byDay={};
+    T.forEach((t,k)=>{ if(t<now||!isDay(t)) return; const dk=dayKey(t); (byDay[dk]||(byDay[dk]=[])).push(k); });
+    const days=Object.keys(byDay).sort().slice(0,5);
+    const cell=(m,idx)=>{ let best=null, ww=0;
+      idx.forEach(k=>{ const c=compsAt(wv,m,k)||[]; const sw=c.filter(x=>x.kind!=="wind").sort((a,b)=>b.H-a.H)[0], w=c.find(x=>x.kind==="wind");
+        if(sw&&(!best||sw.H>best.H)) best=sw; if(w&&w.H>ww) ww=w.H; });
+      return best?{H:best.H,T:best.T,dir:best.dir,ww}:null; };
+    const tr=days.map(dk=>{ const cs=SCEN.map(x=>cell(x.wave,byDay[dk])), Hs=cs.filter(Boolean).map(c=>c.H);
+      const spread=Hs.length>1?(Math.max(...Hs)-Math.min(...Hs))/Math.max(...Hs):0;
+      return `<tr><td><b>${tWd(T[byDay[dk][0]])}</b></td>${cs.map(c=>`<td>${c?`${fmt(c.H)} m · ${fmt(c.T,0)} s ${compass(c.dir)}<br><span class="muted">wind-sea ${fmt(c.ww)} m</span>`:"n/a"}</td>`).join("")}<td>${spread<0.2?'<i class="ok">✓</i> agree':spread<0.35?'<i class="mid">~</i> some spread':'<i class="bad">✗</i> disagree'}</td></tr>`; }).join("");
+    return `<h3 style="margin-top:10px">${g.name}</h3><div class="tbl-wrap"><table class="chk"><tr><th>Day</th>${SCEN.map(x=>`<th>${x.label.split(" · ")[0]}</th>`).join("")}<th></th></tr>${tr}</table></div>`;
+  }).join("");
+  // how much the wind moves the rating for one fixed groundswell
+  const sp=SPOTS.find(s=>s.id==="lizandro")||SPOTS[0], sw=[{kind:"swell",H:1.3,T:12,dir:290}];
+  const ex=[["E (offshore)",90,5],["calm",0,1.5],["N (cross-shore)",0,6],["NW (cross-on)",320,5],["W (onshore)",280,4],["W (onshore)",280,8]].map(([n,wd,ws])=>{ const r=evalSpot(sp,sw,{ws,wd},0.4,Math.max(COMFORT_M,1.5)); return `<tr><td>${n} ${ws} m/s</td><td>${fmt(r.hb)} m</td><td>${r.cleanW}</td><td>${chip(r.q)}</td></tr>`; }).join("");
+  return `<div class="card"><h3>Model check · are the wave models fit for Portugal?</h3>
+   <p class="small">Daily biggest swell train (daylight, next 5 days) from each wave model at the offshore points. Where they agree, the forecast is solid; where they disagree, the chance % is lowered automatically.</p>${rows}
+   <h3 style="margin-top:14px">Wind changes how clean it is – not how big</h3>
+   <p class="small">Unlike the Kattegat app, where the waves are built by the local wind, here the size comes only from the Atlantic swell models; the local wind only grades the surface. Same 1.3 m @ 12 s W swell at ${esc(sp.name)}, different winds:</p>
+   <table class="chk"><tr><th>Wind</th><th>Surf</th><th>Surface</th><th>Rating</th></tr>${ex}</table>
+   <p class="small muted">Wind only adds size through the local wind-sea partition (short-period chop, down-weighted), and it raises the skill needed when it's 12 m/s+.</p></div>`;
+}
 /* ============================ MODEL / LEARN ============================ */
 function renderModel(){
   const c=CAL, cc=CLIM&&CLIM.coast, m=monthOf(Date.now()/1000);
   $("#view").innerHTML=`<div class="page-h"><h1>Model & learning</h1><p class="muted">How Portugal Surf reads the Atlantic around Peniche and Ericeira, and what it has learned from you.</p></div>
+  ${modelCompareCard()}
   ${SK.skillBar(SKILL_LVL,"sk")}${comfortBar()}
   ${ratingsCard()}
   <div class="card"><h3>Peniche vs. the Kattegat</h3>
@@ -997,16 +1082,16 @@ function renderModel(){
 /* ============================ routing / boot ============================ */
 function route(){
   hideTip();
-  const h=location.hash.slice(1)||"home";
-  document.querySelectorAll(".tabbar a").forEach(a=>a.classList.toggle("on", h.startsWith(a.dataset.r)));
+  let h=location.hash.slice(1)||"peniche"; if(h==="home") h="peniche";
+  const sp=h.startsWith("spot-")?SPOTS.find(s=>s.id===h.slice(5)):null, tab=sp?sp.region:h.split("-")[0];
+  document.querySelectorAll(".tabbar a").forEach(a=>a.classList.toggle("on", a.dataset.r===tab));
   if(h.startsWith("log")) return renderLog(h.split("-")[1]);
   if(h==="model") return renderModel();
   if(!STATE) return;
-  if(h.startsWith("spot-")) renderSpot(h.slice(5)); else renderHome();
-  if(!h.startsWith("spot-")) window.scrollTo(0,0);
+  if(sp) renderSpot(sp.id); else renderRegion(REGIONS.some(r=>r.id===h)?h:"peniche");
 }
 let lastSpot=null;
-window.addEventListener("hashchange",()=>{ const h=location.hash; if(h.startsWith("#spot-")&&h!==lastSpot) window.scrollTo(0,0); lastSpot=h; route(); });
+window.addEventListener("hashchange",()=>{ const h=location.hash; PREV_STATS=null; if(h!==lastSpot) window.scrollTo(0,0); lastSpot=h; route(); });
 function rebuild(){ STATE=buildModel(RAW.W, RAW.Wv, RAW.Ws, CLIM, CAL); }
 function setStatus(html, cls=""){ $("#status").innerHTML=html; $("#status").className="status "+cls; }
 
