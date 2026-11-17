@@ -8,49 +8,49 @@ const K = window.PSM;
    exposure = share of the open-ocean swell that reaches the spot (shelter)
    maxHold = size above which the spot closes out / gets dangerous             */
 const SPOTS = [
- {id:"supertubos", name:"Supertubos", area:"Peniche south · Praia do Medão", lat:39.3445, lon:-9.3640,
+ {id:"supertubos", minSkill:1, heavy:1, name:"Supertubos", area:"Peniche south · Praia do Medão", lat:39.3445, lon:-9.3640,
   facing:235, bestSwell:260, swellHalf:55, exposure:1.0, minWave:0.6, maxHold:2.6, tide:"mid-high", driveKm:3, driveMin:7,
   bottom:"Sand over a steep, shifting bank", level:"Intermediate when small · advanced above head high",
   swellNeed:"W–SW–NW groundswell 0.8–2.5 m at 10 s+; picks up almost everything",
   idealWind:"NE–E offshore; N is side-off (the summer 'nortada' is OK here)", tideTxt:"Mid to high; low tide gets hollow and dumpy",
   desc:"The 'European Pipeline'. A south-west-facing beach on the south side of the peninsula, open to every W and SW swell. Small days are fun, fast peaks; above head high it turns into a heavy, shallow barrel that closes out – the first beach to become too much for you when a big swell arrives.",
   hazards:"Heavy shore-break, strong rips when big, crowded at the peak.", parking:"Supertubos car park (Av. do Mar)"},
- {id:"molhe", name:"Molhe Leste", area:"Peniche south · harbour wall", lat:39.3520, lon:-9.3725,
+ {id:"molhe", minSkill:2, heavy:0, name:"Molhe Leste", area:"Peniche south · harbour wall", lat:39.3520, lon:-9.3725,
   facing:200, bestSwell:250, swellHalf:45, exposure:0.6, minWave:0.6, maxHold:3.0, tide:"low-mid", driveKm:2, driveMin:5,
   bottom:"Sandbank along the east harbour wall", level:"Intermediate – advanced",
   swellNeed:"Needs a solid W–SW swell (1.5 m+ offshore); the breakwater blocks most of the NW energy",
   idealWind:"N–NE (offshore), sheltered from the nortada", tideTxt:"Low to mid",
   desc:"Right-hander peeling along the eastern harbour wall. The wall shadows the swell, so it is half the size of Supertubos next door – which is exactly why it is the place to go when the open beaches are too big.",
   hazards:"The jetty; currents along the wall; fishing boats.", parking:"Molhe Leste / Rua do Molhe"},
- {id:"consolacao", name:"Consolação", area:"South of Peniche", lat:39.3240, lon:-9.3600,
+ {id:"consolacao", minSkill:3, heavy:1, name:"Consolação", area:"South of Peniche", lat:39.3240, lon:-9.3600,
   facing:245, bestSwell:270, swellHalf:50, exposure:0.8, minWave:0.7, maxHold:2.8, tide:"all", driveKm:6, driveMin:10,
   bottom:"Reef and rocks (right point), sand to the north", level:"Advanced",
   swellNeed:"W–NW swell 1.2 m+; the long right needs size",
   idealWind:"NE–E offshore; the right has good shelter from N wind", tideTxt:"All tides",
   desc:"Rocky point south of Supertubos with a long, fat right to the south of the headland and a fickle hollow left to the north. Picks up a bit less swell than Supertubos and stays cleaner in a northerly – but rocks and rips make it a no-go when it's big.",
   hazards:"Rocks, strong rips, heavy when big.", parking:"Consolação village"},
- {id:"meio", name:"Meio da Baía", area:"Peniche de Cima bay", lat:39.3655, lon:-9.3530,
+ {id:"meio", minSkill:0, heavy:0, name:"Meio da Baía", area:"Peniche de Cima bay", lat:39.3655, lon:-9.3530,
   facing:325, bestSwell:315, swellHalf:50, exposure:0.75, minWave:0.5, maxHold:2.2, tide:"low-mid", driveKm:3, driveMin:6,
   bottom:"Sand, shifting banks", level:"All levels",
   swellNeed:"NW–N swell; half the size of the open beaches with W swell",
   idealWind:"SE–S–E (offshore) – the winter wind", tideTxt:"Low to mid, rising",
   desc:"The middle of the long bay between Peniche and Baleal. Faces north-west, so it's the north-side option on S–E winds. Mellower than the south side and spreads the crowd along a long stretch of sand.",
   hazards:"Rips between the banks when bigger.", parking:"Estrada Marginal Norte"},
- {id:"cantinho", name:"Cantinho da Baía", area:"Baleal south", lat:39.3725, lon:-9.3390,
+ {id:"cantinho", minSkill:0, heavy:0, name:"Cantinho da Baía", area:"Baleal south", lat:39.3725, lon:-9.3390,
   facing:285, bestSwell:330, swellHalf:40, exposure:0.55, minWave:0.4, maxHold:2.0, tide:"all", driveKm:5, driveMin:9,
   bottom:"Sand, a few rocks at high tide", level:"Beginner → intermediate",
   swellNeed:"Big N or medium NW swell wrapping into the corner of the bay",
   idealWind:"NE–E–SE (offshore)", tideTxt:"All tides",
   desc:"'Corner of the bay' on the south side of the Baleal isthmus. Tucked behind Baleal island, it's the most sheltered beach in Peniche – small and soft when the rest is too big, the surf-school hub on normal days.",
   hazards:"Crowded with schools; rocks north of the café at high tide.", parking:"Baleal isthmus (Rua Amigos do Baleal)"},
- {id:"baleal", name:"Baleal Norte", area:"Baleal north / Ferrel", lat:39.3790, lon:-9.3285,
+ {id:"baleal", minSkill:0, heavy:0, name:"Baleal Norte", area:"Baleal north / Ferrel", lat:39.3790, lon:-9.3285,
   facing:345, bestSwell:320, swellHalf:55, exposure:0.85, minWave:0.5, maxHold:2.3, tide:"low-mid", driveKm:6, driveMin:10,
   bottom:"Sand, long beach towards Ferrel", level:"All levels",
   swellNeed:"NW–N swell 0.6–2 m at 8 s+",
   idealWind:"S–SE (offshore) – winter/autumn wind", tideTxt:"Low to mid, rising",
   desc:"North-facing beach from Baleal to Ferrel. The opposite orientation of Supertubos: when the wind is southerly, this side is offshore. Open to NW swell, so it has size when the bay is small.",
   hazards:"Rips on bigger days.", parking:"Praia do Baleal Norte"},
- {id:"lagide", name:"Lagide", area:"Baleal north", lat:39.3780, lon:-9.3350,
+ {id:"lagide", minSkill:2, heavy:0, name:"Lagide", area:"Baleal north", lat:39.3780, lon:-9.3350,
   facing:0, bestSwell:325, swellHalf:45, exposure:0.9, minWave:0.6, maxHold:2.3, tide:"mid", driveKm:5, driveMin:9,
   bottom:"Flat reef + sand", level:"Intermediate+",
   swellNeed:"NW–NNW swell 0.8 m+",
@@ -68,6 +68,8 @@ const SCEN = [ // wave model + wind model
   {key:"mf",  w:0.45, wave:"meteofrance_wave", wind:"meteofrance_seamless", label:"Météo-France MFWAM · AROME wind"},
   {key:"ec",  w:0.30, wave:"ecmwf_wam025",     wind:"ecmwf_ifs025",         label:"ECMWF WAM · ECMWF wind"},
   {key:"gfs", w:0.25, wave:"ncep_gfswave025",  wind:"meteofrance_seamless", label:"NOAA GFS-Wave · AROME wind"}];
+const SK = window.SKILL;
+let SKILL_LVL = load("pn_skill", 2);
 const COMFORT = [{t:"Waist",v:0.8},{t:"Chest",v:1.1},{t:"Head",v:1.5},{t:"Overhead",v:2.0},{t:"Well overhead",v:2.6}];
 
 /* ============================ helpers ============================ */
@@ -144,6 +146,21 @@ async function fetchSea(){
 }
 function series(loc, v, m){ const h=loc&&loc.hourly; if(!h) return null; return (m&&h[v+"_"+m])||h[v]||null; }
 
+/* skill the conditions need: wave power (size × period), bottom, heaviness, wind, storm sea */
+function reqSkill(spot, r){
+  if(r.hb==null) return null;
+  const pw = r.hb*Math.sqrt(Math.max(r.T||8,6)/10);
+  let q = pw<0.6?0:pw<1.0?1:pw<1.6?2:pw<2.3?3:4;
+  if(r.hb>=0.4) q=Math.max(q, spot.minSkill||0);
+  if(spot.heavy && r.hb>=1.2) q++;
+  if(r.ws!=null && r.ws>=12) q++;
+  if(r.ss && K.seaClass(r.ss, r.ws).k==="storm") q=4;
+  return Math.min(4,q);
+}
+function evalSpot(spot, comps, wind, tideX, M, cal){
+  const r=K.evaluate(spot, comps, wind, tideX, M, cal); if(r.q==null) return r;
+  r.req=reqSkill(spot, r); r.above=r.req>SKILL_LVL; r.q*=SK.skillPenalty(r.req, SKILL_LVL); return r;
+}
 /* offshore wave components for one model at index k */
 function compsAt(Wv, m, k){
   const g=v=>{ const s=series(Wv,v,m); return s?s[k]:null; };
@@ -184,7 +201,7 @@ function buildModel(W, Wv, Ws, clim, cal){
         let ws=wsM[x.wind]&&wsM[x.wind][i], wd=wdM[x.wind]&&wdM[x.wind][i];
         if(ws==null){ ws=wsM.ecmwf_ifs025&&wsM.ecmwf_ifs025[i]; wd=wdM.ecmwf_ifs025&&wdM.ecmwf_ifs025[i]; }
         if(ws==null) return;
-        const r=K.evaluate(s, comps, {ws,wd}, tideX, COMFORT_M, C); if(r.q==null) return;
+        const r=evalSpot(s, comps, {ws,wd}, tideX, COMFORT_M, C); if(r.q==null) return;
         scen.push({key:x.key, comps, ...r});
       });
       const P = scen.find(x=>x.key==="mf")||scen.find(x=>x.key==="ec")||scen[0]||null;
@@ -207,7 +224,7 @@ function buildModel(W, Wv, Ws, clim, cal){
 
 /* ============================ climatology (3 y hindcast) ============================ */
 async function fetchClimate(){
-  const key="pn_clim_v2_"+COMFORT_M, c=load(key); if(c&&Date.now()-c.at<14*864e5) return c;
+  const key="pn_clim_v3_"+COMFORT_M+"_"+SKILL_LVL, c=load(key); if(c&&Date.now()-c.at<14*864e5) return c;
   const end=new Date(Date.now()-10*864e5), start=new Date(end); start.setFullYear(end.getFullYear()-3);
   const d=x=>x.toISOString().slice(0,10);
   const [wv, wn] = await Promise.all([
@@ -223,7 +240,7 @@ async function fetchClimate(){
     const comps=compsAt(wv,null,i); if(!comps||!comps.length) return;
     const m=monthOf(t), dk=dayKey(t), ss=K.seaState(comps), cl=K.seaClass(ss,U[w]);
     if(cl){ A[m].n++; A[m].cls[cl.k]=(A[m].cls[cl.k]||0)+1; }
-    SPOTS.forEach(s=>{ const r=K.evaluate(s,comps,{ws:U[w]*0.9,wd:D[w]},null,COMFORT_M); if(r.q==null) return; const M=per[s.id][m];
+    SPOTS.forEach(s=>{ const r=evalSpot(s,comps,{ws:U[w]*0.9,wd:D[w]},null,COMFORT_M); if(r.q==null) return; const M=per[s.id][m];
       M.n++; M.days[dk]=1; if(r.q>=GOOD_Q){ M.g++; M.gd[dk]=(M.gd[dk]||0)+1; } if(r.tooBig) M.big++; });
   });
   SPOTS.forEach(s=>{ res[s.id]=per[s.id].map(x=>({pct:x.n?x.g/x.n:0, big:x.n?x.big/x.n:0, days:Object.values(x.gd).filter(v=>v>=2).length/Math.max(1,Object.keys(x.days).length)*30.4})); });
@@ -265,7 +282,7 @@ async function predictFor(spotId, start, end){
   const hs=wv.hourly.time.map((t,i)=>{ if(t<start-1800||t>end) return null; const w=wm[t]; if(w==null||U[w]==null) return null;
     const comps=compsAt(wv,"meteofrance_wave",i); if(!comps||!comps.length) return null;
     const tx=se&&sm[t]!=null?K.tideNorm(se.hourly.sea_level_height_msl,sm[t]):null;
-    const r=K.evaluate(s,comps,{ws:U[w],wd:D[w]},tx,COMFORT_M); return {P:r,q:r.q}; });
+    const r=evalSpot(s,comps,{ws:U[w],wd:D[w]},tx,COMFORT_M); return {P:r,q:r.q}; });
   const a=avg(hs); if(a) a.src="archived run"; return a;
 }
 function similarSessions(spotId, P){
@@ -309,6 +326,14 @@ function spotSlots(S){
   return out.sort((x,y)=>y.pPeak-x.pPeak);
 }
 function allSlots(M){ return M.spots.flatMap(spotSlots).sort((a,b)=>b.pPeak-a.pPeak); }
+function top3(slots){ const out=[]; for(const s of slots){ if(out.length>=3) break; if(s.pPeak<0.12) break;
+  if(out.some(o=>s.start<o.end&&o.start<s.end)) continue; out.push(s); } return out; }
+function topCard(sl, i){ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak), p=plan(s, sl.start, sl.end);
+  return `<a class="topc" href="#spot-${s.id}" data-t="${sl.peakH.t}"><span class="rank">#${i+1}</span>
+    <div class="topc-m"><b>${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span>
+    <span class="small">🚗 Leave by <b>${tHr(p.leave)}</b> · ${rangeTxt(sl.peakH)} m · ${P.cleanW.toLowerCase()} · tide ${tideTxt(sl.peakH)}</span>
+    <span>${chip(sl.peakH.q)} ${SK.skillChip(P.req, SKILL_LVL)}</span></div>
+    <div class="topc-p"><b>${pct(sl.pPeak)}</b><span class="tier ${T.c}">${T.t}</span></div></a>`; }
 function plan(spot, start, end){ return {leave:start-(spot.driveMin+15)*60, arrive:start-15*60, home:end+spot.driveMin*60}; }
 function planHtml(spot, sl){ const p=plan(spot, sl.start, sl.end);
   return `<div class="plan"><span>🚗 Leave ${ORIGIN.name} <b>${tHr(p.leave)}</b></span><span>Surf <b>${tHr(sl.start)}–${tHr(sl.end)}</b></span><span>Tide <b>${tideTxt(sl.peakH)}</b></span></div>`; }
@@ -330,6 +355,7 @@ function whyHtml(S, h){
   if(P.tooBig) v+=` <b>Bigger than your ${fmt(COMFORT_M)} m comfort limit</b>${P.hold?" and past what the spot holds – closing out":""}. Look at the sheltered spots.`;
   else if(P.hb<s.minWave) v+=` Too small to work properly here.`;
   lines.push(`<b>Verdict:</b> ${v}`);
+  if(P.req!=null) lines.push(`<b>Skill:</b> needs <b>${SK.SKILLS[P.req].t}</b> – ${SK.SKILLS[P.req].can.charAt(0).toLowerCase()+SK.SKILLS[P.req].can.slice(1)}${P.above?` <b>Above your level (${SK.SKILLS[SKILL_LVL].t})</b> – rated down.`:""}`);
   return `<div class="why">${lines.map(l=>`<p>${l}</p>`).join("")}</div>`;
 }
 function checklist(S, h){
@@ -342,7 +368,8 @@ function checklist(S, h){
     ["Wind at beach", "off/side-off, or < 4 m/s", `${compass(P.wd)} ${fmt(P.ws,0)} · ${P.ws!=null?K.windLabel(P.rel,P.ws):"–"}`, ws>=0.75?2:ws>=0.45?1:0],
     ["Sea state", "one clean swell", P.ss?`${fmt(P.ss.windFrac*100,0)}% wind-sea${P.ss.cross>0.5?", crossing":""}`:"–", P.sc>=0.8?2:P.sc>=0.6?1:0],
     ["Tide", s.tideTxt, tideTxt(h), P.ts>=0.95?2:P.ts>=0.8?1:0],
-    ["Daylight", "sunrise–sunset", h.day?"yes":"dark", h.day?2:0]
+    ["Daylight", "sunrise–sunset", h.day?"yes":"dark", h.day?2:0],
+    ["Skill", `your level: ${SK.SKILLS[SKILL_LVL].t}`, P.req!=null?SK.SKILLS[P.req].t:"–", P.req==null?1:P.req<=SKILL_LVL?2:P.req===SKILL_LVL+1?1:0]
   ];
   return `<table class="chk"><tr><th>Condition</th><th>Spot needs</th><th>Forecast</th><th></th></tr>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${st(r[3])}</td></tr>`).join("")}</table>`;
 }
@@ -428,7 +455,9 @@ function gearHtml(S, h, compact){
 function comfortBar(){
   return `<div class="comfort"><span>My max wave</span><div class="opts">${COMFORT.map(c=>`<label class="opt"><input type="radio" name="cm" value="${c.v}" ${c.v===COMFORT_M?"checked":""}><span>${c.t}</span></label>`).join("")}</div></div>`;
 }
-function bindComfort(){ document.querySelectorAll('input[name="cm"]').forEach(r=>r.onchange=async()=>{ COMFORT_M=+r.value; store("pn_comfort",COMFORT_M); CLIM=load("pn_clim_v2_"+COMFORT_M); if(RAW) rebuild(); route();
+function bindSkill(){ document.querySelectorAll('input[name="sk"]').forEach(r=>r.onchange=async()=>{ SKILL_LVL=+r.value; store("pn_skill",SKILL_LVL); CLIM=load("pn_clim_v3_"+COMFORT_M+"_"+SKILL_LVL); if(RAW) rebuild(); route();
+  try{ CLIM=await fetchClimate(); rebuild(); route(); }catch(e){} }); }
+function bindComfort(){ document.querySelectorAll('input[name="cm"]').forEach(r=>r.onchange=async()=>{ COMFORT_M=+r.value; store("pn_comfort",COMFORT_M); CLIM=load("pn_clim_v3_"+COMFORT_M+"_"+SKILL_LVL); if(RAW) rebuild(); route();
   try{ CLIM=await fetchClimate(); rebuild(); route(); }catch(e){} }); }
 
 /* coast-wide ocean state per day (from the exposed-beach scenario) */
@@ -460,16 +489,16 @@ function oceanCard(M){
 }
 
 function renderHome(){
-  const M=STATE, el=$("#view"), slots=allSlots(M), top=slots[0];
+  const M=STATE, el=$("#view"), slots=allSlots(M), tops=top3(slots), top=tops[0]||slots[0];
   const spotBest=S=>slots.find(x=>x.S===S);
   let hero="";
   if(top){
     const s=top.S.spot, P=top.peakH.P, T=tier(top.pPeak);
     hero=`<a class="hero" href="#spot-${s.id}" data-t="${top.peakH.t}">
-      <div class="hero-k">Best slot for you · next 5 days <span class="tier ${T.c}">${T.t}</span></div>
+      <div class="hero-k">#1 · best slot for you <span class="tier ${T.c}">${T.t}</span></div>
       <div class="hero-row"><div><div class="hero-spot">${esc(s.name)}</div><div class="hero-when">${tDay(top.start)} · ${tHr(top.start)}–${tHr(top.end)}</div></div>
       <div class="hero-p"><b>${pct(top.pPeak)}</b><span>chance of a<br>good session</span></div></div>
-      <div class="hero-surf"><span class="big">${rangeTxt(top.peakH)}<small>m</small></span><span>${sizeWords(P.hb)}<br>${chip(top.peakH.q)} ${cleanChip(P)}</span></div>
+      <div class="hero-surf"><span class="big">${rangeTxt(top.peakH)}<small>m</small></span><span>${sizeWords(P.hb)}<br>${chip(top.peakH.q)} ${cleanChip(P)}<br>${SK.skillChip(P.req, SKILL_LVL)}</span></div>
       <div class="hero-meta">${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s · ${K.windLabel(P.rel,P.ws)} · swell ${swellTxt(P)} · tide ${tideTxt(top.peakH)}</div>
       ${planHtml(s, top)}${gearHtml(top.S, top.peakH, true)}</a>`;
   }
@@ -477,7 +506,7 @@ function renderHome(){
     return `<details class="slot" ${i===0?"open":""}><summary>
       <span class="slot-p"><b>${pct(sl.pPeak)}</b><span class="tier ${T.c}">${T.t}</span></span>
       <span class="slot-main"><b>${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span></span>
-      <span class="slot-r">${chip(sl.peakH.q)}<span>${rangeTxt(sl.peakH)} m · ${sl.peakH.P.cleanW.toLowerCase()}</span></span></summary>
+      <span class="slot-r">${chip(sl.peakH.q)}<span>${rangeTxt(sl.peakH)} m · ${sl.peakH.P.cleanW.toLowerCase()}</span><span>${sl.peakH.P.req!=null?SK.SKILLS[sl.peakH.P.req].t:""}</span></span></summary>
       ${planHtml(s, sl)}${gearHtml(sl.S, sl.peakH, true)}${whyHtml(sl.S, sl.peakH)}${locHtml(s)}
       <a class="btn small-btn" href="#spot-${s.id}" data-t="${sl.peakH.t}">Open ${esc(s.name)} forecast →</a></details>`; }).join("");
   const days=[...new Set(M.spots[0].hours.filter(h=>!h.past&&h.day).map(h=>dayKey(h.t)))].slice(0,5);
@@ -490,7 +519,7 @@ function renderHome(){
     return `<a class="row" href="#spot-${s.id}">
       <span class="stripe" style="background:${P&&P.tooBig?"#7a3fbf":ri>=0?RATINGS[ri].c:"#cfd3d8"}"></span>
       <div class="row-main"><div class="row-top"><b>${esc(s.name)}</b><span class="muted">faces ${compass(s.facing)} · ${esc(s.level.split(" ")[0])}</span></div>
-        <div class="row-now"><span class="muted small">Now</span><span class="surf">${rangeTxt(nowH)} m</span>${chip(nowH.q)}${P&&P.tooBig?bigChip(P):cleanChip(P)}<span class="wind">${P?arrow(P.wd,13)+" "+fmt(P.ws,0)+" "+K.windLabel(P.rel,P.ws):""}</span></div>
+        <div class="row-now"><span class="muted small">Now</span><span class="surf">${rangeTxt(nowH)} m</span>${chip(nowH.q)}${P&&P.tooBig?bigChip(P):P&&P.above?SK.skillChip(P.req,SKILL_LVL):cleanChip(P)}<span class="wind">${P?arrow(P.wd,13)+" "+fmt(P.ws,0)+" "+K.windLabel(P.rel,P.ws):""}</span></div>
         <div class="strip">${strip}</div></div>
       <div class="row-next">${b?`<b>${pct(b.pPeak)}</b><span>${tWd(b.start)} ${tHr(b.start)}</span>`:`<span class="muted">–</span>`}</div></a>`;
   }).join("");
@@ -513,9 +542,12 @@ function renderHome(){
     ${SPOTS.map(s=>`<tr><td><a href="#spot-${s.id}">${esc(s.name)}</a></td>${SWELL_DIRS.map(([,d])=>`<td>${swellCell(s,d)}</td>`).join("")}</tr>`).join("")}</table></div>
     <div class="legend-r small"><span><span class="gi build">●</span> most of it</span><span><span class="gi small">◐</span> part</span><span><span class="gi small">○</span> little</span><span><span class="gi none">–</span> blocked</span></div>
     <p class="small"><b>In short:</b> N wind (the summer nortada) → south side: Supertubos, Molhe Leste, Consolação. S–SE wind (autumn/winter) → north side: Baleal Norte, Lagide, Meio da Baía. E wind → almost everywhere is clean. Too big? → Molhe Leste and Cantinho da Baía see only about half the swell. W–SW wind is onshore nearly everywhere – then only Cantinho da Baía is semi-protected.</p></div>`;
-  el.innerHTML = `${comfortBar()}${hero || `<div class="hero quiet"><div class="hero-spot">Nothing in your range</div><div class="hero-when">Check the ocean state below</div></div>`}
+  el.innerHTML = `${SK.skillBar(SKILL_LVL,"sk")}${comfortBar()}
+    <div class="sec-h"><h2>Top 3 for you</h2><span class="muted small">next 5 days · ${SK.SKILLS[SKILL_LVL].t} · ≤ ${fmt(COMFORT_M)} m</span></div>
+    ${hero || `<div class="hero quiet"><div class="hero-spot">Nothing in your range</div><div class="hero-when">Check the ocean state below</div></div>`}
+    <div class="tops">${tops.slice(1).map((sl,i)=>topCard(sl,i+1)).join("")}</div>
     ${oceanCard(M)}
-    <div class="sec-h"><h2>Best slots</h2><span class="muted small">≥ Fair and ≤ ${fmt(COMFORT_M)} m</span></div>
+    <div class="sec-h"><h2>All best slots</h2><span class="muted small">≥ Fair and ≤ ${fmt(COMFORT_M)} m</span></div>
     <div class="slots">${list||'<p class="muted">No slot in your range in the next days.</p>'}</div>
     <div class="sec-h"><h2>Map</h2><span class="muted small">tap a spot</span></div>
     <div class="mapbox" id="ovMap"></div>
@@ -524,7 +556,7 @@ function renderHome(){
     <div class="legend-r">${RATINGS.map(r=>`<span><i style="background:${r.c}"></i>${r.t}</span>`).join("")}<span><i style="background:#7a3fbf"></i>Too big for you</span> <a href="#model" class="link">How ratings work →</a></div>
     ${cmp}${matrix}`;
   el.querySelectorAll("[data-t]").forEach(a=>a.addEventListener("click",()=>{ VIEW.sel=+a.dataset.t; VIEW.day=dayKey(+a.dataset.t); }));
-  bindComfort(); drawOverviewMap(M, slots);
+  bindComfort(); bindSkill(); drawOverviewMap(M, slots);
 }
 
 /* ============================ SPOT ============================ */
@@ -546,7 +578,7 @@ function renderSpot(id){
     return `<button class="dtab ${dk===VIEW.day?"on":""}" data-d="${dk}"><span>${tWd(S.hours.find(h=>dayKey(h.t)===dk).t)}</span><b>${sl?pct(sl.pPeak):"–"}</b><em>${sl?rangeTxt(sl.peakH)+" m":""}</em><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i></button>`; }).join("");
   const dh=S.hours.filter(h=>dayKey(h.t)===VIEW.day&&(VIEW.night||h.day||h.t===sel.t));
   const rows=dh.map(h=>{ const p=h.P||{}; return `<tr class="${h.t===sel.t?"sel":""} ${h.past?"past":""}" data-t="${h.t}">
-     <td>${tHr(h.t)}</td><td><b>${pct(h.p)}</b></td><td>${p.tooBig?`<span class="chip" style="--c:#7a3fbf">Too big</span>`:chip(h.q)}</td><td class="num"><b>${rangeTxt(h)}</b></td>
+     <td>${tHr(h.t)}</td><td><b>${pct(h.p)}</b></td><td>${p.tooBig?`<span class="chip" style="--c:#7a3fbf">Too big</span>`:p.above?`<span class="chip" style="--c:${SK.SKILLS[p.req].c}">${SK.SKILLS[p.req].t}+</span>`:chip(h.q)}</td><td class="num"><b>${rangeTxt(h)}</b></td>
      <td class="num">${p.ss?`${fmt(p.ss.primary&&p.ss.primary.H)}<small> m</small> ${fmt(p.ss.primary&&p.ss.primary.T,0)}<small>s</small> <span class="muted">${compass(p.ss.dir)}</span>`:"–"}</td>
      <td class="num">${arrow(p.wd,13)} ${fmt(p.ws,0)}<small>${h.gust!=null?"–"+fmt(h.gust,0):""}</small> <span class="muted">${p.ws!=null?K.windLabel(p.rel,p.ws):""}</span></td>
      <td>${p.cleanW?`<span class="cdot" style="--c:${CLEAN_C[p.cleanW]}"></span>${p.cleanW}`:"–"}</td><td>${tideTxt(h)}</td></tr>`; }).join("");
@@ -560,7 +592,7 @@ function renderSpot(id){
      <div><h1>${esc(s.name)}</h1><div class="muted">${esc(s.area)} · faces ${compass(s.facing)} · ${s.driveMin} min from ${ORIGIN.name}</div></div></div>
    <div class="now-card">
      <div class="now-top"><div><div class="muted small">${tDay(sel.t)} · ${tHr(sel.t)}${sel.past?" (past)":""}</div>
-       <div class="big">${rangeTxt(sel)}<small>m</small></div><div>${sizeWords(P.hb)} ${P.tooBig?bigChip(P):""}</div></div>
+       <div class="big">${rangeTxt(sel)}<small>m</small></div><div>${sizeWords(P.hb)} ${P.tooBig?bigChip(P):""} ${SK.skillChip(P.req, SKILL_LVL)}</div></div>
        <div class="now-r">${chip(sel.q)}<div class="pct"><b>${pct(sel.p)}</b><span>chance of a<br>good session</span></div></div></div>
      <div class="stats">
        <div><span>Wind</span><b>${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)}</b><em>${P.ws!=null?K.windLabel(P.rel,P.ws):""}${sel.gust!=null?` · g${fmt(sel.gust,0)}`:""}</em></div>
@@ -678,13 +710,14 @@ const RATING_DEF = [
 function ratingsCard(){
   return `<div class="card" id="ratings"><h3>How ratings work</h3>
    <p class="small">Every hour gets a quality score <b>q</b> from 0 to 1 – for <b>you</b>, with your max wave set to <b>${comfortName()}</b>:</p>
-   <p class="formula">q = Size × Wind × Period × Sea × Tide</p>
+   <p class="formula">q = Size × Wind × Period × Sea × Tide × Skill</p>
    <ul class="small">
     <li><b>Size</b> – breaking height at the beach vs. the spot's minimum and <b>your maximum</b>. Full marks from ~70% of your max up to your max; above it the score drops fast (−70% at 1.3× your max). Waves over 1.15× your max are flagged <b>Too big for you</b>.</li>
     <li><b>Wind</b> – local wind vs. the beach orientation. Offshore/side-off or &lt; 2.5 m/s = 100%; onshore drops to 8–65% – Atlantic onshore wind ruins a groundswell quickly.</li>
     <li><b>Period</b> – 11 s+ groundswell full marks, 8 s fair, &lt; 6 s poor.</li>
     <li><b>Sea</b> – how organised the ocean is: share of local wind-sea, crossing swell trains, period. This is what separates a clean day from a lumpy one at the same size.</li>
     <li><b>Tide</b> – each spot's preferred tide (from the sea-level forecast), up to −32%.</li>
+    <li><b>Skill</b> – each hour needs a level from wave power (size × period: &lt; 0.6 Beginner, &lt; 1.0 Novice, &lt; 1.6 Intermediate, &lt; 2.3 Advanced, above Expert), the spot's minimum (Consolação Advanced; Molhe Leste and Lagide Intermediate; Supertubos Novice), +1 when Supertubos/Consolação get heavy (≥ 1.2 m), +1 in 12 m/s+ wind, Expert in storm sea. One level above yours ×0.35, two or more ×0.08.</li>
    </ul>
    <table class="cmp">${RATING_DEF.map(([n,r,d])=>{const R=RATINGS.find(x=>x.t===n);return `<tr><td><span class="chip" style="--c:${R.c}">${n}</span></td><td class="small">q ${r}</td><td class="small">${d}</td></tr>`}).join("")}</table>
    <h3 style="margin-top:14px">Surface (how clean)</h3>
@@ -754,7 +787,7 @@ function bindDeletes(){ document.querySelectorAll("[data-del]").forEach(b=>b.onc
 function renderModel(){
   const c=CAL, cc=CLIM&&CLIM.coast, m=monthOf(Date.now()/1000);
   $("#view").innerHTML=`<div class="page-h"><h1>Model & learning</h1><p class="muted">How Peniche Surf reads the Atlantic, and what it has learned from you.</p></div>
-  ${comfortBar()}
+  ${SK.skillBar(SKILL_LVL,"sk")}${comfortBar()}
   ${ratingsCard()}
   <div class="card"><h3>Peniche vs. the Kattegat</h3>
    <p class="small">In North Zealand every wave is wind-sea made inside the Kattegat, so the app has to model the wind. Peniche sits on the open Atlantic: most surf is <b>groundswell</b> – energy from storms 1,000–3,000 km away that arrives days later, organised into long, evenly spaced lines. That changes what matters:</p>
@@ -789,7 +822,7 @@ function renderModel(){
    <tr><td>Historic base rates</td><td>3-year wave hindcast + ERA5 wind through the same model</td></tr></table>
    <p class="small muted">Spot parameters (orientation, window, shelter, tide) are first estimates from surf guides – your sessions correct them. Not a safety service: check the beach and the flags.</p>
    <p class="small"><a href="../" style="color:var(--accent)">← Nordkyst (North Zealand) version</a></p></div>`;
-  bindComfort();
+  bindComfort(); bindSkill();
   const json=()=>JSON.stringify({app:"peniche",v:1,sessions:SESSIONS},null,1);
   $("#exp").onclick=async()=>{ try{ await navigator.clipboard.writeText(json()); $("#bmsg").textContent="Copied – paste it into a note or mail to yourself."; }catch(e){ $("#bmsg").textContent="Copy blocked – use Download."; } };
   $("#dl").onclick=()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([json()],{type:"application/json"})); a.download="peniche-sessions.json"; a.click(); };
@@ -814,7 +847,7 @@ function setStatus(html, cls=""){ $("#status").innerHTML=html; $("#status").clas
 
 async function boot(){
   setStatus("Loading Atlantic swell & wind…");
-  CLIM = load("pn_clim_v2_"+COMFORT_M);
+  CLIM = load("pn_clim_v3_"+COMFORT_M+"_"+SKILL_LVL);
   const cached=load("pn_last_v1");
   let W=null, Wv=null, Ws=null, err=null;
   try{ [W,Wv,Ws]=await Promise.all([fetchWind(), fetchWaves(), fetchSea().catch(e=>{console.warn("sea",e);return null})]); }catch(e){ err=e; }

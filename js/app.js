@@ -25,7 +25,7 @@ const SPOTS = [
   idealWind:"S–SW (offshore/side-off); light NW onshore OK when small",
   desc:"Long NW-facing beach backed by Tisvilde Hegn forest. Very exposed to NW so it holds size and has the most consistent sandbar peaks on this stretch.",
   hazards:"Big NW onshore days are a washing machine – pick the clean-up.", parking:"Tisvildeleje Strand"},
- {id:"udsholt", name:"Rågeleje / Udsholt", area:"Gribskov", lat:56.103, lon:12.185, sea:[56.13,12.17], sea2:[56.16,12.15],
+ {id:"udsholt", name:"Rågeleje / Udsholt", area:"Gribskov", minSkill:2, lat:56.103, lon:12.185, sea:[56.13,12.17], sea2:[56.16,12.15],
   facing:345, bestSwell:325, swellHalf:60, exposure:1.0, minWave:0.5, driveKm:62, driveMin:60,
   bottom:"Pebbles, stones and boulder patches", level:"Intermediate+",
   swellNeed:"NW–N windswell 0.8 m+; better with higher water",
@@ -60,6 +60,8 @@ const TZ = "Europe/Copenhagen";
 const PAST_DAYS = 3, SHOW_PAST_H = 24, FC_DAYS = 5;
 const GOOD_Q = 0.45;
 const SCEN_W = {kwm_dmi:0.5, kwm_ecmwf:0.2, ewam:0.3};
+const SK = window.SKILL;
+let SKILL_LVL = load("nk_skill", 2);
 
 /* ============================ helpers ============================ */
 const $ = (s,r=document)=>r.querySelector(s);
@@ -130,13 +132,22 @@ function sizeScore(hb, min){
   if(hb<1.8) return 1; if(hb<2.6) return lerp(hb,1.8,2.6,1,0.55); return 0.45;
 }
 function periodScore(T){ if(T==null) return 0.6; return T<3.5?0.25:T<5?lerp(T,3.5,5,0.25,0.7):T<7?lerp(T,5,7,0.7,1):1; }
+/* skill the conditions need: size, rocks, strong wind (paddling, current) */
+function reqSkill(spot, hb, ws){
+  if(hb==null) return null;
+  let r = hb<0.5?0:hb<0.9?1:hb<1.4?2:hb<2.0?3:4;
+  if(spot.minSkill && hb>=0.4) r=Math.max(r, spot.minSkill);
+  if(ws!=null && ws>=12) r++;
+  return Math.min(4,r);
+}
 function quality(spot, Hs, T, dir, ws, wd, cal){
   const hb = breaking(spot, Hs, dir, cal);
   if(hb==null||ws==null) return {q:null,hb};
   const rel = windRel(spot, wd);
   let q = sizeScore(hb, spot.minWave)*(0.3+0.7*windScore(rel,ws))*(0.55+0.45*periodScore(T));
   if(cal && cal.qBias && q>0.05) q = clamp(q+cal.qBias,0,1);
-  return {q, hb, rel};
+  const req = reqSkill(spot, hb, ws); q *= SK.skillPenalty(req, SKILL_LVL);
+  return {q, hb, rel, req, above: req>SKILL_LVL};
 }
 
 /* ============================ fetch geometry (precomputed once) ============================ */
@@ -260,7 +271,7 @@ function windows(M){
 
 /* ============================ climatology (5 y ERA5 through KWM) ============================ */
 async function fetchClimate(){
-  const c=load("nk_clim_v3"); if(c&&Date.now()-c.at<7*864e5) return c;
+  const c=load("nk_clim_v4_"+SKILL_LVL); if(c&&Date.now()-c.at<7*864e5) return c;
   const end=new Date(Date.now()-7*864e5), start=new Date(end); start.setFullYear(end.getFullYear()-5);
   const d=x=>x.toISOString().slice(0,10);
   const j=await getJSON(`https://archive-api.open-meteo.com/v1/archive?latitude=56.35&longitude=12.05&start_date=${d(start)}&end_date=${d(end)}&hourly=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&timeformat=unixtime`);
@@ -274,7 +285,7 @@ async function fetchClimate(){
       M[m].dl++; M[m].days[dk]=1; if(q>=GOOD_Q){ M[m].g++; M[m].gd[dk]=(M[m].gd[dk]||0)+1; } });
     res[s.id]=M.map(x=>({pct:x.dl?x.g/x.dl:0, days:Object.values(x.gd).filter(v=>v>=2).length/Math.max(1,Object.keys(x.days).length)*30.4}));
   });
-  store("nk_clim_v3",res); return res;
+  store("nk_clim_v4_"+SKILL_LVL,res); return res;
 }
 
 /* ============================ sessions + learning ============================ */
@@ -355,6 +366,17 @@ function spotSlots(S){
   return out.sort((x,y)=>y.pPeak-x.pPeak);
 }
 function allSlots(M){ return M.spots.flatMap(spotSlots).sort((a,b)=>b.pPeak-a.pPeak); }
+/* top 3 distinct options: skip slots overlapping in time with one already picked */
+function top3(slots){ const out=[]; for(const s of slots){ if(out.length>=3) break; if(s.pPeak<0.12) break;
+  if(out.some(o=>s.start<o.end&&o.start<s.end)) continue; out.push(s); } return out; }
+function bindSkill(){ document.querySelectorAll('input[name="sk"]').forEach(r=>r.onchange=async()=>{ SKILL_LVL=+r.value; store("nk_skill",SKILL_LVL); CLIM=load("nk_clim_v4_"+SKILL_LVL); if(RAW) rebuild(); route();
+  try{ CLIM=await fetchClimate(); rebuild(); route(); }catch(e){} }); }
+function topCard(sl, i){ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak), p=plan(s, sl.start, sl.end);
+  return `<a class="topc" href="#spot-${s.id}" data-t="${sl.peakH.t}"><span class="rank">#${i+1}</span>
+    <div class="topc-m"><b>${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span>
+    <span class="small">🚗 Leave by <b>${tHr(p.leave)}</b> · ${rangeTxt(sl.peakH)} m · ${windLabel(P.rel,P.ws)}</span>
+    <span>${chip(sl.peakH.q)} ${SK.skillChip(P.req, SKILL_LVL)}</span></div>
+    <div class="topc-p"><b>${pct(sl.pPeak)}</b><span class="tier ${T.c}">${T.t}</span></div></a>`; }
 function plan(spot, start, end){
   const leave=start-(spot.driveMin+15)*60, arrive=start-15*60, home=end+spot.driveMin*60, sun=sunFor(start);
   return {leave, arrive, home, firstLight: sun.rise, dark: sun.set};
@@ -377,6 +399,7 @@ function whyHtml(S, h){
   lines.push(`<b>At the beach:</b> ${compass(P.wd)} ${fmt(P.ws,0)} m/s = <b>${lab}</b> for a ${compass(s.facing)}-facing beach → ${lab==="offshore"||lab==="side-off"||lab==="glassy"?"clean faces":lab==="cross-shore"?"some texture":"bumpy, wind-chopped"}.`);
   let trend = h.cleanup ? "Wind easing/turning after the blow – the classic Kattegat clean-up window." : (h.growing&&P.rel<70&&P.ws>8) ? "Sea still building under onshore wind – size up, quality down." : "";
   lines.push(`<b>Verdict:</b> ${RATINGS[Math.max(0,ratingIdx(h.q))].t}, ${sizeWords(P.hb).toLowerCase()} (${rangeTxt(h)} m), <b>${pct(h.p)} chance</b> of a good session. ${trend}`);
+  if(P.req!=null) lines.push(`<b>Skill:</b> needs <b>${SK.SKILLS[P.req].t}</b> – ${SK.SKILLS[P.req].can.charAt(0).toLowerCase()+SK.SKILLS[P.req].can.slice(1)}${P.above?` <b>That is above your level (${SK.SKILLS[SKILL_LVL].t})</b> – rated down.`:""}`);
   return `<div class="why">${lines.map(l=>`<p>${l}</p>`).join("")}</div>`;
 }
 /* what the spot needs vs. what the forecast gives */
@@ -388,7 +411,8 @@ function checklist(S, h){
     ["Sea direction", `${compass(s.bestSwell-s.swellHalf)}–${compass(s.bestSwell+s.swellHalf)}`, compass(P.dir), dd<s.swellHalf?2:dd<s.swellHalf+20?1:0],
     ["Wave period", "≥ 5 s", `${fmt(P.T)} s`, P.T>=5?2:P.T>=4?1:0],
     ["Wind at beach", "off/side-off, or < 6 m/s", `${compass(P.wd)} ${fmt(P.ws,0)} · ${P.ws!=null?windLabel(P.rel,P.ws):"–"}`, ws>=0.75?2:ws>=0.45?1:0],
-    ["Daylight", "sunrise–sunset", h.day?"yes":"dark", h.day?2:0]
+    ["Daylight", "sunrise–sunset", h.day?"yes":"dark", h.day?2:0],
+    ["Skill", `your level: ${SK.SKILLS[SKILL_LVL].t}`, P.req!=null?SK.SKILLS[P.req].t:"–", P.req==null?1:P.req<=SKILL_LVL?2:P.req===SKILL_LVL+1?1:0]
   ];
   return `<table class="chk"><tr><th>Condition</th><th>Spot needs</th><th>Forecast</th><th></th></tr>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${st(r[3])}</td></tr>`).join("")}</table>`;
 }
@@ -485,16 +509,16 @@ function gearHtml(S, h, compact){
 
 /* ============================ HOME ============================ */
 function renderHome(){
-  const M=STATE, el=$("#view"), slots=allSlots(M), top=slots[0];
+  const M=STATE, el=$("#view"), slots=allSlots(M), tops=top3(slots), top=tops[0]||slots[0];
   const spotBest=S=>slots.find(x=>x.S===S);
   let hero="";
   if(top){
     const s=top.S.spot, P=top.peakH.P, T=tier(top.pPeak);
     hero=`<a class="hero" href="#spot-${s.id}" data-t="${top.peakH.t}">
-      <div class="hero-k">Best slot · next 5 days <span class="tier ${T.c}">${T.t}</span></div>
+      <div class="hero-k">#1 · best slot for you <span class="tier ${T.c}">${T.t}</span></div>
       <div class="hero-row"><div><div class="hero-spot">${esc(s.name)}</div><div class="hero-when">${tDay(top.start)} · ${tHr(top.start)}–${tHr(top.end)}</div></div>
       <div class="hero-p"><b>${pct(top.pPeak)}</b><span>chance of a<br>good session</span></div></div>
-      <div class="hero-surf"><span class="big">${rangeTxt(top.peakH)}<small>m</small></span><span>${sizeWords(P.hb)}<br>${chip(top.peakH.q)}</span></div>
+      <div class="hero-surf"><span class="big">${rangeTxt(top.peakH)}<small>m</small></span><span>${sizeWords(P.hb)}<br>${chip(top.peakH.q)} ${SK.skillChip(P.req, SKILL_LVL)}</span></div>
       <div class="hero-meta">${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s · ${windLabel(P.rel,P.ws)} · ${fmt(P.Hs)} m @ ${fmt(P.T)} s from ${compass(P.dir)}</div>
       ${planHtml(s, top)}${gearHtml(top.S, top.peakH, true)}</a>`;
   }
@@ -502,7 +526,7 @@ function renderHome(){
     return `<details class="slot" ${i===0?"open":""}><summary>
       <span class="slot-p"><b>${pct(sl.pPeak)}</b><span class="tier ${T.c}">${T.t}</span></span>
       <span class="slot-main"><b>${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span></span>
-      <span class="slot-r">${chip(sl.peakH.q)}<span>${rangeTxt(sl.peakH)} m</span></span></summary>
+      <span class="slot-r">${chip(sl.peakH.q)}<span>${rangeTxt(sl.peakH)} m · ${P.req!=null?SK.SKILLS[P.req].t.toLowerCase():""}</span></span></summary>
       ${planHtml(s, sl)}${gearHtml(sl.S, sl.peakH, true)}${whyHtml(sl.S, sl.peakH)}${locHtml(s)}
       <a class="btn small-btn" href="#spot-${s.id}" data-t="${sl.peakH.t}">Open ${esc(s.name)} forecast →</a></details>`; }).join("");
   const days=[...new Set(M.spots[0].hours.filter(h=>!h.past&&h.day).map(h=>dayKey(h.t)))].slice(0,5);
@@ -515,7 +539,7 @@ function renderHome(){
     return `<a class="row" href="#spot-${s.id}">
       <span class="stripe" style="background:${ri>=0?RATINGS[ri].c:"#cfd3d8"}"></span>
       <div class="row-main"><div class="row-top"><b>${esc(s.name)}</b><span class="muted">${s.driveMin} min · faces ${compass(s.facing)}</span></div>
-        <div class="row-now"><span class="muted small">Now</span><span class="surf">${rangeTxt(nowH)} m</span>${chip(nowH.q)}<span class="wind">${P?arrow(P.wd,13)+" "+fmt(P.ws,0)+" "+windLabel(P.rel,P.ws):""}</span></div>
+        <div class="row-now"><span class="muted small">Now</span><span class="surf">${rangeTxt(nowH)} m</span>${chip(nowH.q)}${P&&P.above?SK.skillChip(P.req,SKILL_LVL):""}<span class="wind">${P?arrow(P.wd,13)+" "+fmt(P.ws,0)+" "+windLabel(P.rel,P.ws):""}</span></div>
         <div class="strip">${strip}</div></div>
       <div class="row-next">${b?`<b>${pct(b.pPeak)}</b><span>${tWd(b.start)} ${tHr(b.start)}</span>`:`<span class="muted">–</span>`}</div></a>`;
   }).join("");
@@ -534,8 +558,11 @@ function renderHome(){
     ${SPOTS.map(s=>`<tr><td><a href="#spot-${s.id}">${esc(s.name.split(" /")[0])}</a></td>${windGuide(s).map(x=>`<td title="${x.txt} (${Math.round(x.F)} km)">${GUIDE_ICON[x.code]}</td>`).join("")}</tr>`).join("")}</table></div>
     <div class="legend-r small"><span>${GUIDE_ICON.build} builds surf</span><span>${GUIDE_ICON.small} small</span><span>${GUIDE_ICON.clean} cleans up (offshore)</span><span>${GUIDE_ICON.none} nothing</span></div>
     <p class="small"><b>In short:</b> NW is the money direction – the longest open water (100–140 km) and it hits every spot. W builds surf from Liseleje to Gilleleje but misses Lynæs, Hornbæk and Ålsgårde. N works everywhere; NE is blocked by Sweden/Kullen. S–SE (and SW for the north coast) is offshore: no new surf, but it cleans up what a NW blow left behind.</p></div>`;
-  el.innerHTML = `${hero || `<div class="hero quiet"><div class="hero-spot">No data yet</div></div>`}
-    <div class="sec-h"><h2>Best slots</h2><span class="muted small">chance of ≥ Fair session</span></div>
+  el.innerHTML = `${SK.skillBar(SKILL_LVL,"sk")}
+    <div class="sec-h"><h2>Top 3 for you</h2><span class="muted small">next 5 days · ${SK.SKILLS[SKILL_LVL].t}</span></div>
+    ${hero || `<div class="hero quiet"><div class="hero-spot">Nothing for your level</div></div>`}
+    <div class="tops">${tops.slice(1).map((sl,i)=>topCard(sl,i+1)).join("")}</div>
+    <div class="sec-h"><h2>All best slots</h2><span class="muted small">chance of ≥ Fair session</span></div>
     <div class="slots">${list}</div>
     <div class="sec-h"><h2>Map</h2><span class="muted small">tap a spot</span></div>
     <div class="mapbox" id="ovMap"></div>
@@ -544,7 +571,7 @@ function renderHome(){
     <div class="legend-r">${RATINGS.map(r=>`<span><i style="background:${r.c}"></i>${r.t}</span>`).join("")} <a href="#model" class="link">How ratings work →</a></div>
     ${cmp}${matrix}`;
   el.querySelectorAll("[data-t]").forEach(a=>a.addEventListener("click",()=>{ VIEW.sel=+a.dataset.t; VIEW.day=dayKey(+a.dataset.t); }));
-  drawOverviewMap(M, slots);
+  bindSkill(); drawOverviewMap(M, slots);
 }
 
 /* ============================ SPOT ============================ */
@@ -562,7 +589,7 @@ function renderSpot(id){
     return `<button class="dtab ${dk===VIEW.day?"on":""}" data-d="${dk}"><span>${tWd(S.hours.find(h=>dayKey(h.t)===dk).t)}</span><b>${sl?pct(sl.pPeak):"–"}</b><em>${sl?rangeTxt(sl.peakH)+" m":""}</em><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i></button>`; }).join("");
   const dh=S.hours.filter(h=>dayKey(h.t)===VIEW.day&&(VIEW.night||h.day||h.t===sel.t));
   const rows=dh.map(h=>{ const p=h.P||{}; return `<tr class="${h.t===sel.t?"sel":""} ${h.past?"past":""}" data-t="${h.t}">
-     <td>${tHr(h.t)}</td><td><b>${pct(h.p)}</b></td><td>${chip(h.q)}</td><td class="num"><b>${rangeTxt(h)}</b></td>
+     <td>${tHr(h.t)}</td><td><b>${pct(h.p)}</b></td><td>${p.above?`<span class="chip" style="--c:${SK.SKILLS[p.req].c}">${SK.SKILLS[p.req].t}+</span>`:chip(h.q)}</td><td class="num"><b>${rangeTxt(h)}</b></td>
      <td class="num">${fmt(p.Hs)}<small> m</small> ${fmt(p.T,0)}<small>s</small> <span class="muted">${compass(p.dir)}</span></td>
      <td class="num">${arrow(p.wd,13)} ${fmt(p.ws,0)}<small>${h.gust!=null?"–"+fmt(h.gust,0):""}</small> <span class="muted">${p.ws!=null?windLabel(p.rel,p.ws):""}</span></td></tr>`; }).join("");
   const sims=similarSessions(s.id, P), mySess=SESSIONS.filter(x=>x.spot===s.id).sort((a,b)=>b.start-a.start);
@@ -575,7 +602,7 @@ function renderSpot(id){
      <div><h1>${esc(s.name)}</h1><div class="muted">${esc(s.area)} · faces ${compass(s.facing)} · ${s.driveMin} min from Copenhagen</div></div></div>
    <div class="now-card">
      <div class="now-top"><div><div class="muted small">${tDay(sel.t)} · ${tHr(sel.t)}${sel.past?" (past)":""}</div>
-       <div class="big">${rangeTxt(sel)}<small>m</small></div><div>${sizeWords(P.hb)}</div></div>
+       <div class="big">${rangeTxt(sel)}<small>m</small></div><div>${sizeWords(P.hb)} ${SK.skillChip(P.req, SKILL_LVL)}</div></div>
        <div class="now-r">${chip(sel.q)}<div class="pct"><b>${pct(sel.p)}</b><span>chance of a<br>good session</span></div></div></div>
      <div class="stats">
        <div><span>Wind</span><b>${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)}</b><em>${P.ws!=null?windLabel(P.rel,P.ws):""}${sel.gust!=null?` · g${fmt(sel.gust,0)}`:""}</em></div>
@@ -686,11 +713,12 @@ const RATING_DEF = [
 function ratingsCard(){
   return `<div class="card" id="ratings"><h3>How ratings work</h3>
    <p class="small">Every hour gets a quality score <b>q</b> from 0 to 1:</p>
-   <p class="formula">q = Size × Wind × Period</p>
+   <p class="formula">q = Size × Wind × Period × Skill</p>
    <ul class="small">
     <li><b>Size</b> – estimated breaking height at the beach vs. the spot's minimum (0.4–0.5 m). Full marks 0.9–1.8 m; drops when tiny or storm-sized (&gt; 2.6 m).</li>
     <li><b>Wind</b> – local DMI wind vs. the beach's orientation. Offshore/side-off or &lt; 2.5 m/s = 100%; cross-shore 45–85%; onshore 15–70% depending on strength. Never zero, because Kattegat waves only exist while it blows.</li>
     <li><b>Period</b> – 5–7 s organised windswell scores well, &lt; 4 s chop poorly.</li>
+    <li><b>Skill</b> – each hour needs a level: by surf size (&lt; 0.5 m Beginner, &lt; 0.9 m Novice, &lt; 1.4 m Intermediate, &lt; 2 m Advanced, above Expert), at least Intermediate on the rocks at Udsholt, one level up in 12 m/s+ wind. One level above yours ×0.35, two or more ×0.08.</li>
    </ul>
    <table class="cmp">${RATING_DEF.map(([n,r,d])=>{const R=RATINGS.find(x=>x.t===n);return `<tr><td><span class="chip" style="--c:${R.c}">${n}</span></td><td class="small">q ${r}</td><td class="small">${d}</td></tr>`}).join("")}</table>
    <h3 style="margin-top:14px">What the % means</h3>
@@ -752,6 +780,7 @@ function bindDeletes(){ document.querySelectorAll("[data-del]").forEach(b=>b.onc
 function renderModel(){
   const c=CAL;
   $("#view").innerHTML=`<div class="page-h"><h1>Model & learning</h1><p class="muted">How Nordkyst forecasts Kattegat windswell, and what it has learned from you.</p></div>
+  ${SK.skillBar(SKILL_LVL,"sk")}
   ${ratingsCard()}
   <div class="card"><h3>What the model has learned</h3>
    <p class="small muted">Each logged session compares your rating and wave size with what the model predicted for that hour. Corrections are shrunk toward "no change" until there are enough sessions.</p>
@@ -776,6 +805,7 @@ function renderModel(){
    <tr><td>Past sessions</td><td>Archived DMI runs via Open-Meteo Historical Forecast API</td></tr>
    <tr><td>Historic base rates</td><td>ERA5 hourly wind (5 years) through the Kattegat model</td></tr></table>
    <p class="small muted">Spot parameters (orientation, window, exposure) are first estimates – your sessions correct them.</p></div>`;
+  bindSkill();
   const json=()=>JSON.stringify({app:"nordkyst",v:1,sessions:SESSIONS},null,1);
   $("#exp").onclick=async()=>{ try{ await navigator.clipboard.writeText(json()); $("#bmsg").textContent="Copied – paste it into a note or mail to yourself."; }catch(e){ $("#bmsg").textContent="Copy blocked – use Download."; } };
   $("#dl").onclick=()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([json()],{type:"application/json"})); a.download="nordkyst-sessions.json"; a.click(); };

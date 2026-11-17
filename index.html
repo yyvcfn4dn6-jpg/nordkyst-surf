@@ -160,6 +160,18 @@ table.hours.slotsT{min-width:440px}
 .gear-g span{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3)}.gear-g b{font-size:14.5px}.gear-g em{font-style:normal;font-size:12px;color:var(--ink2)}
 .small-map iframe{width:100%;height:100%;border:0;display:block}
 .leaflet-container{background:#cfe3f0}
+/* skill + top 3 (shared look) */
+.comfort{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;background:#fff;border-radius:14px;padding:8px 12px;margin:4px 0 10px;box-shadow:0 1px 2px rgba(11,31,51,.06)}
+.comfort>span{font-size:12.5px;font-weight:700;color:var(--navy)}.comfort .opt span{padding:4px 10px;font-size:12.5px}
+.sk-help{width:100%;font-size:12.5px}.sk-help summary{cursor:pointer;color:var(--accent);font-weight:600}.sk-help table{margin-top:6px}.sk-help tr.sel td{background:#eef5ff}
+.chip.sk-above{background:#fde6e6;color:#b42324}
+.hero .chip.sk{background:rgba(255,255,255,.14);color:#fff}.hero .chip.sk-above{background:#ffd9d9;color:#8a1010}
+.now-card .chip.sk{background:rgba(255,255,255,.14);color:#fff}.now-card .chip.sk-above{background:#ffd9d9;color:#8a1010}
+.tops{display:grid;gap:8px;margin:-6px 0 6px}
+.topc{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:10px 12px;box-shadow:0 1px 2px rgba(11,31,51,.06)}
+.topc .rank{font-size:18px;font-weight:800;color:var(--ink3);width:30px}
+.topc-m{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}.topc-m>span{font-size:13px;color:var(--ink2)}.topc-m b{font-size:15.5px}
+.topc-p{display:flex;flex-direction:column;align-items:flex-end;gap:3px}.topc-p b{font-size:20px;color:var(--navy2)}
 @media(min-width:900px){main{max-width:820px}.tabbar{justify-content:center;gap:40px}}
 </style>
 </head>
@@ -181,6 +193,7 @@ table.hours.slotsT{min-width:440px}
 <div class="tip" id="tip"></div>
 <script src="vendor/leaflet/leaflet.js"></script>
 <script src="js/kwm.js"></script>
+<script src="js/skill.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
