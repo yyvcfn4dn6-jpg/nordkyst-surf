@@ -750,7 +750,9 @@ function renderRegion(gid){
   const M=STATE, el=$("#view"), slots=allSlots(M), rSlots=slots.filter(x=>x.S.spot.region===g.id);
   const tops=top3(rSlots.filter(fitsYou)), st=filterStats(M,g,slots);
   const dks=[...new Set(rSlots.map(s=>dayKey(s.start)))].sort().slice(0,5);
-  if(!VIEW.hday||!dks.includes(VIEW.hday)) VIEW.hday=dks[0];
+  VIEW.hdays=VIEW.hdays||{};
+  if(!dks.includes(VIEW.hdays[g.id])) VIEW.hdays[g.id]=dks.find(dk=>rSlots.some(s=>dayKey(s.start)===dk&&fitsYou(s)))||dks[0];
+  VIEW.hday=VIEW.hdays[g.id];
   const dtabs=dks.map(dk=>{ const any=rSlots.find(s=>dayKey(s.start)===dk), b=rSlots.find(s=>dayKey(s.start)===dk&&fitsYou(s)), i=b?ratingIdx(b.peakH.q):-1;
     return `<button class="dtab ${dk===VIEW.hday?"on":""}" data-hd="${dk}"><span>${tWd(any.start)}</span><b>${b?pct(b.pPeak):"–"}</b><em>${b?esc(b.S.spot.name.split(" ")[0]):"nothing"}</em><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i></button>`; }).join("");
   const days=[...new Set(M.spots[0].hours.filter(h=>!h.past&&h.day).map(h=>dayKey(h.t)))].slice(0,5);
@@ -772,7 +774,7 @@ function renderRegion(gid){
     host.innerHTML = !L.length ? `<div class="hero quiet"><div class="hero-spot">Nothing for you this day</div><div class="hero-when">Too big, too rough or too small everywhere in ${g.name}. Rest, watch, or check ${other.name}.</div></div>`
       : heroCard(L[0], `#1 · ${tDay(L[0].start)}`)+`<div class="tops">${L.slice(1).map((sl,i)=>topCard(sl,i+1)).join("")}</div>`+(L.length<3?`<p class="small muted">Only ${L.length} option${L.length>1?"s":""} in your range this day.</p>`:"");
     bindT(); };
-  el.querySelectorAll("[data-hd]").forEach(b=>b.onclick=()=>{ VIEW.hday=b.dataset.hd; el.querySelectorAll("[data-hd]").forEach(x=>x.classList.toggle("on",x===b)); dayTops(); });
+  el.querySelectorAll("[data-hd]").forEach(b=>b.onclick=()=>{ VIEW.hday=VIEW.hdays[g.id]=b.dataset.hd; el.querySelectorAll("[data-hd]").forEach(x=>x.classList.toggle("on",x===b)); dayTops(); });
   el.querySelectorAll("[data-go]").forEach(c=>c.onclick=()=>{ const [id,t]=c.dataset.go.split("|"); VIEW.sel=+t; VIEW.day=dayKey(+t); location.hash="#spot-"+id; });
   dayTops(); bindT();
   bindComfort(); bindSkill(); bindTrip();
