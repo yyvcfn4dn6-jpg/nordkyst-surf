@@ -375,7 +375,7 @@ function topCard(sl, i){ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak), p=pl
   return `<a class="topc" href="#spot-${s.id}" data-t="${sl.peakH.t}"><span class="rank">#${i+1}</span>
     <div class="topc-m"><b>${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span>
     <span class="small">🚗 Leave by <b>${tHr(p.leave)}</b> · ${rangeTxt(sl.peakH)} m · ${windLabel(P.rel,P.ws)}</span>
-    <span>${chip(sl.peakH.q)} ${SK.skillChip(P.req, SKILL_LVL)} ${hzChip(safety(sl.S,sl.peakH).lvl,"Safety:")}</span></div>
+    <span>${chip(sl.peakH.q)} ${SK.skillChip(P.req, SKILL_LVL)} ${hzChip(safety(sl.S,sl.peakH).lvl,"Safety:")} ${matChip(maturity(sl.S,sl.peakH),"Forecast:")}</span></div>
     <div class="topc-p"><b>${pct(sl.pPeak)}</b><span class="tier ${T.c}">${T.t}</span></div></a>`; }
 function plan(spot, start, end){
   const leave=start-(spot.driveMin+15)*60, arrive=start-15*60, home=end+spot.driveMin*60, sun=sunFor(start);
@@ -585,6 +585,72 @@ function safetyCard(S,h){
    <p class="small muted">Ranked from forecast wind and gusts (DMI), wave height, water temperature and level, sunset and the spot's layout. A guide to help you plan – always look at the water yourself before going in.</p></div>`;
 }
 
+
+/* ============================ FORECAST MATURITY ============================ */
+/* How settled an hour's forecast is: lead time, model agreement, change since your last check */
+const MAT_LV=[
+  {t:"Early look", c:"#8a949e", bg:"#eef0f2", d:"4–5 days out or models disagree. The pattern is a hint; timing and size will likely move."},
+  {t:"Likely to shift", c:"#c98a00", bg:"#fff3d6", d:"Direction of travel is useful; expect the window to move by several hours and size to change."},
+  {t:"Fairly settled", c:"#2a78d6", bg:"#e8f2fd", d:"Good enough to plan around; fine-tune timing the day before."},
+  {t:"Firm", c:"#1fa463", bg:"#e3f5ea", d:"High-resolution DMI range and models agree. Small tweaks only."}];
+let PREV_RUN=null;
+function runKey(id,t){ return id+"|"+t; }
+function snapshotRun(M){ const d={}; M.spots.forEach(S=>S.hours.forEach(h=>{ if(!h.past&&h.day&&h.P) d[runKey(S.spot.id,h.t)]=[+h.p.toFixed(3),+h.P.hb.toFixed(2)]; })); return {at:Date.now(), d}; }
+function trackRuns(M){
+  const cur=snapshotRun(M), last=load("nk_run_last"), prev=load("nk_run_prev");
+  if(last&&Date.now()-last.at>=2*3600e3){ store("nk_run_prev",last); store("nk_run_last",cur); PREV_RUN=last; }
+  else { if(!last) store("nk_run_last",cur); PREV_RUN=prev||null; }
+}
+function maturity(S, h){
+  const lead=Math.max(0,(h.t-STATE.now)/3600);
+  const leadF=Math.exp(-lead/100);
+  const sc=h.scen||[], hbs=sc.map(x=>x.hb).filter(x=>x!=null);
+  let agree=0.6, notes=[];
+  if(hbs.length>1){
+    const mean=hbs.reduce((a,b)=>a+b,0)/hbs.length, spread=Math.max(...hbs)-Math.min(...hbs);
+    const d=sc.find(x=>x.key==="kwm_dmi"), e=sc.find(x=>x.key==="kwm_ecmwf");
+    const dirD=d&&e&&d.ws>3&&e.ws>3?angDiff(d.wd,e.wd):0, spdD=d&&e?Math.abs(d.ws-e.ws):0;
+    const pen=clamp(spread/Math.max(0.35,mean),0,1)*0.5+clamp(dirD/90,0,1)*0.3+clamp(spdD/6,0,1)*0.2;
+    agree=1-pen;
+    notes.push(spread<0.2?"models agree on size":`models differ on size by ${fmt(spread)} m`);
+    if(dirD>=30) notes.push(`DMI and ECMWF differ ${Math.round(dirD)}° on wind direction`);
+    if(spdD>=3) notes.push(`and ${fmt(spdD,0)} m/s on wind speed`);
+  } else notes.push("only one model available");
+  let score=0.6*leadF+0.4*agree;
+  let drift=null;
+  if(PREV_RUN){ const o=PREV_RUN.d[runKey(S.spot.id,h.t)];
+    if(o&&h.P){ drift={dp:h.p-o[0], dh:h.P.hb-o[1], ago:(Date.now()-PREV_RUN.at)/3600e3};
+      const mv=Math.abs(drift.dp)/0.25+Math.abs(drift.dh)/0.4; score-=clamp(mv,0,1)*0.15; } }
+  score=clamp(score,0,1);
+  const lvl=score>=0.72?3:score>=0.55?2:score>=0.38?1:0;
+  const shift=lead<24?1:lead<48?2:lead<72?4:lead<96?6:9;
+  const sizeVar=lead<24?15:lead<48?25:lead<72?35:50;
+  return {lvl, score:Math.round(score*100), lead, dmi:lead<=54, notes, drift, shift, sizeVar};
+}
+function matChip(m, prefix){ const L=MAT_LV[m.lvl]; return `<span class="hzc" style="--c:${L.c};--b:${L.bg}">${prefix?prefix+" ":""}${L.t}</span>`; }
+function leadTxt(l){ return l<1?"now":l<24?`in ${Math.round(l)} h`:`${(l/24).toFixed(1).replace(".0","")} days out`; }
+function driftTxt(d){ if(!d) return ""; const ago=d.ago<24?`${Math.round(d.ago)} h`:`${Math.round(d.ago/24)} d`;
+  if(Math.abs(d.dp)<0.05&&Math.abs(d.dh)<0.1) return `Stable since your check ${ago} ago.`;
+  return `Since your check ${ago} ago: chance ${d.dp>=0?"+":""}${Math.round(d.dp*100)} pts, waves ${d.dh>=0?"+":""}${fmt(d.dh)} m.`; }
+function matLine(S,h){ const m=maturity(S,h); return `${matChip(m,"Forecast:")} <span class="small muted">${leadTxt(m.lead)} · timing ±${m.shift} h</span>`; }
+function maturityCard(S,h){
+  const m=maturity(S,h), L=MAT_LV[m.lvl];
+  const days=[...new Set(S.hours.filter(x=>!x.past&&x.day&&x.P).map(x=>dayKey(x.t)))].slice(0,5).map(dk=>{
+    const hs=S.hours.filter(x=>dayKey(x.t)===dk&&x.day&&!x.past&&x.P), ms=hs.map(x=>maturity(S,x)), avg=ms.reduce((a,x)=>a+x.score,0)/ms.length;
+    const lv=avg>=72?3:avg>=55?2:avg>=38?1:0;
+    return `<div class="hzd"><b>${tWd(hs[0].t)}</b>${matChip({lvl:lv})}<span class="small muted">${Math.round(avg)}</span></div>`; }).join("");
+  return `<div class="card"><h3>Forecast maturity · ${tDay(h.t)} ${tHr(h.t)}</h3>
+   <div class="hz-sum" style="--c:${L.c};--b:${L.bg}"><b>${L.t} · ${m.score}/100</b><span>${L.d}</span></div>
+   <ul class="mat">
+    <li><b>Lead time:</b> ${leadTxt(m.lead)} – ${m.dmi?"inside DMI's 2 km HARMONIE range (~2.5 days), the most detailed local model":"beyond DMI's 2.5-day high-res range, so the wind is from the coarser ECMWF global model"}.</li>
+    <li><b>Model agreement:</b> ${m.notes.join(", ")}.</li>
+    <li><b>Expect:</b> window timing ±${m.shift} h, wave size ±${m.sizeVar}%.</li>
+    ${m.drift?`<li><b>Trend:</b> ${driftTxt(m.drift)}</li>`:`<li class="muted">Trend appears after your next check a few hours from now.</li>`}
+   </ul>
+   <h3 style="margin-top:10px">Next days</h3><div class="hzdays">${days}</div>
+   <p class="small muted">Rule of thumb for the Kattegat: windswell exists only while the wind blows, so any shift in a low-pressure track moves the whole window. Plan with 3–5 day slots, commit the day before.</p></div>`;
+}
+
 /* ============================ HOME ============================ */
 function renderHome(){
   const M=STATE, el=$("#view"), slots=allSlots(M), tops=top3(slots), top=tops[0]||slots[0];
@@ -598,14 +664,14 @@ function renderHome(){
       <div class="hero-p"><b>${pct(top.pPeak)}</b><span>chance of a<br>good session</span></div></div>
       <div class="hero-surf"><span class="big">${rangeTxt(top.peakH)}<small>m</small></span><span>${sizeWords(P.hb)}<br>${chip(top.peakH.q)} ${SK.skillChip(P.req, SKILL_LVL)}</span></div>
       <div class="hero-meta">${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s · ${windLabel(P.rel,P.ws)} · ${fmt(P.Hs)} m @ ${fmt(P.T)} s from ${compass(P.dir)}</div>
-      ${planHtml(s, top)}${gearHtml(top.S, top.peakH, true)}</a>`;
+      ${planHtml(s, top)}<div class="sfl">${matLine(top.S, top.peakH)}</div>${gearHtml(top.S, top.peakH, true)}</a>`;
   }
   const list = slots.slice(0,6).map((sl,i)=>{ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak);
     return `<details class="slot" ${i===0?"open":""}><summary>
       <span class="slot-p"><b>${pct(sl.pPeak)}</b><span class="tier ${T.c}">${T.t}</span></span>
       <span class="slot-main"><b>${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span></span>
       <span class="slot-r">${chip(sl.peakH.q)}<span>${rangeTxt(sl.peakH)} m waves</span><span class="small muted">${P.req!=null?SK.SKILLS[P.req].t:""} · ${HZ_LV[safety(sl.S,sl.peakH).lvl].t.toLowerCase()}</span></span></summary>
-      ${planHtml(s, sl)}<div class="sfl">${safetyLine(sl.S, sl.peakH)}</div>${gearHtml(sl.S, sl.peakH, true)}${whyHtml(sl.S, sl.peakH)}${locHtml(s)}
+      ${planHtml(s, sl)}<div class="sfl">${safetyLine(sl.S, sl.peakH)}</div><div class="sfl">${matLine(sl.S, sl.peakH)}</div>${gearHtml(sl.S, sl.peakH, true)}${whyHtml(sl.S, sl.peakH)}${locHtml(s)}
       <a class="btn small-btn" href="#spot-${s.id}" data-t="${sl.peakH.t}">Open ${esc(s.name)} forecast →</a></details>`; }).join("");
   const days=[...new Set(M.spots[0].hours.filter(h=>!h.past&&h.day).map(h=>dayKey(h.t)))].slice(0,5);
   const rows=M.spots.map(S=>{
@@ -664,7 +730,7 @@ function renderSpot(id){
   VIEW.sel=sel.t;
   const P=sel.P||{}, mNow=monthOf(STATE.now), C=S.cal, cl=CLIM&&CLIM[s.id];
   const tabs=days.map(dk=>{ const sl=slots.find(x=>dayKey(x.start)===dk); const i=sl?ratingIdx(sl.peakH.q):-1;
-    return `<button class="dtab ${dk===VIEW.day?"on":""}" data-d="${dk}"><span>${tWd(S.hours.find(h=>dayKey(h.t)===dk).t)}</span><b>${sl?pct(sl.pPeak):"–"}</b><em>${sl?rangeTxt(sl.peakH)+" m":""}</em><i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i></button>`; }).join("");
+    return `<button class="dtab ${dk===VIEW.day?"on":""}" data-d="${dk}"><span>${tWd(S.hours.find(h=>dayKey(h.t)===dk).t)}</span><b>${sl?pct(sl.pPeak):"–"}</b><em>${sl?rangeTxt(sl.peakH)+" m":""}</em>${sl?`<em class="mt" style="color:${MAT_LV[maturity(S,sl.peakH).lvl].c}">${MAT_LV[maturity(S,sl.peakH).lvl].t}</em>`:""}<i style="background:${i>=0?RATINGS[i].c:"#e2e5e9"}"></i></button>`; }).join("");
   const dh=S.hours.filter(h=>dayKey(h.t)===VIEW.day&&(VIEW.night||h.day||h.t===sel.t));
   const rows=dh.map(h=>{ const p=h.P||{}; return `<tr class="${h.t===sel.t?"sel":""} ${h.past?"past":""}" data-t="${h.t}">
      <td>${tHr(h.t)}</td><td><b>${pct(h.p)}</b></td><td>${p.above?`<span class="chip" style="--c:${SK.SKILLS[p.req].c}">${SK.SKILLS[p.req].t}+</span>`:chip(h.q)}</td><td class="num"><b>${rangeTxt(h)}</b></td><td>${p.req!=null?`<span class="chip" style="--c:${SK.SKILLS[p.req].c}">${SK.SKILLS[p.req].short}</span>`:"–"}</td><td>${h.P?hzChip(safety(S,h).lvl):"–"}</td>
@@ -672,7 +738,7 @@ function renderSpot(id){
      <td class="num">${arrow(p.wd,13)} ${fmt(p.ws,0)}<small>${h.gust!=null?"–"+fmt(h.gust,0):""}</small> <span class="muted">${p.ws!=null?windLabel(p.rel,p.ws):""}</span></td></tr>`; }).join("");
   const sims=similarSessions(s.id, P), mySess=SESSIONS.filter(x=>x.spot===s.id).sort((a,b)=>b.start-a.start);
   const slotRows=slots.slice().sort((a,b)=>a.start-b.start).map(sl=>{ const T=tier(sl.pPeak), p=plan(s,sl.start,sl.end);
-    return `<tr data-t="${sl.peakH.t}" class="${dayKey(sl.start)===VIEW.day?"sel":""}"><td><b>${tWd(sl.start)}</b> ${tHr(sl.start)}–${tHr(sl.end)}</td><td><b>${pct(sl.pPeak)}</b><br><span class="tier ${T.c}">${T.t}</span></td><td>${chip(sl.peakH.q)}<br><span class="small">${rangeTxt(sl.peakH)} m waves</span><br>${hzChip(safety(S,sl.peakH).lvl)}</td><td class="small">${arrow(sl.peakH.P.wd,12)} ${compass(sl.peakH.P.wd)} ${fmt(sl.peakH.P.ws,0)} ${windLabel(sl.peakH.P.rel,sl.peakH.P.ws)}</td><td class="small">leave ${tHr(p.leave)}</td></tr>`; }).join("");
+    return `<tr data-t="${sl.peakH.t}" class="${dayKey(sl.start)===VIEW.day?"sel":""}"><td><b>${tWd(sl.start)}</b> ${tHr(sl.start)}–${tHr(sl.end)}</td><td><b>${pct(sl.pPeak)}</b><br><span class="tier ${T.c}">${T.t}</span></td><td>${chip(sl.peakH.q)}<br><span class="small">${rangeTxt(sl.peakH)} m waves</span><br>${hzChip(safety(S,sl.peakH).lvl)}</td><td class="small">${arrow(sl.peakH.P.wd,12)} ${compass(sl.peakH.P.wd)} ${fmt(sl.peakH.P.ws,0)} ${windLabel(sl.peakH.P.rel,sl.peakH.P.ws)}</td><td class="small">leave ${tHr(p.leave)}</td><td>${matChip(maturity(S,sl.peakH))}</td></tr>`; }).join("");
   const guide=windGuide(s);
   const selSlot=slots.find(x=>x.hours.includes(sel));
   $("#view").innerHTML=`
@@ -690,11 +756,12 @@ function renderSpot(id){
      </div>
      ${selSlot?planHtml(s, selSlot):""}
    </div>
+   ${maturityCard(S, sel)}
    ${safetyCard(S, sel)}
    <div class="card"><h3>Board & wetsuit · ${tDay(sel.t)} ${tHr(sel.t)}</h3>${gearHtml(S, sel)}</div>
    <div class="card"><h3>Why · ${tDay(sel.t)} ${tHr(sel.t)}</h3>${whyHtml(S, sel)}${checklist(S, sel)}</div>
    <div class="card"><h3>Best time slots · next 5 days</h3><p class="small muted">Best daylight block per day. Tap to open that day.</p>
-     <div class="tbl-wrap"><table class="hours slotsT"><thead><tr><th>Slot</th><th>Chance</th><th>Rating</th><th>Wind</th><th>Drive</th></tr></thead><tbody>${slotRows||"<tr><td colspan=5 class='muted'>No daylight data</td></tr>"}</tbody></table></div></div>
+     <div class="tbl-wrap"><table class="hours slotsT"><thead><tr><th>Slot</th><th>Chance</th><th>Rating</th><th>Wind</th><th>Drive</th><th>Forecast</th></tr></thead><tbody>${slotRows||"<tr><td colspan=5 class='muted'>No daylight data</td></tr>"}</tbody></table></div></div>
    <div class="card"><h3>Chance by hour · 5 days</h3><div id="pChart"></div></div>
    <div class="dtabs">${tabs}</div>
    <div class="card"><div class="ch-h"><h3>Hour by hour</h3><label class="tog"><input type="checkbox" id="night" ${VIEW.night?"checked":""}> night</label></div>
@@ -802,6 +869,9 @@ function ratingsCard(){
    <table class="cmp">${RATING_DEF.map(([n,r,d])=>{const R=RATINGS.find(x=>x.t===n);return `<tr><td><span class="chip" style="--c:${R.c}">${n}</span></td><td class="small">q ${r}</td><td class="small">${d}</td></tr>`}).join("")}</table>
    <h3 style="margin-top:14px">What the % means</h3>
    <p class="small"><b>Chance of a good session</b> = probability the hour rates <b>Fair or better</b>. It combines three runs – Kattegat model with DMI wind (50%), with ECMWF wind (20%) and DWD's EWAM wind-sea (30%) – and leans on the spot's 5-year history the further ahead you look. <b>Go</b> ≥ 60% · <b>Worth a look</b> 40–60% · <b>Long shot</b> 20–40%.</p>
+   <h3 style="margin-top:14px">Forecast maturity</h3>
+   <table class="cmp small">${MAT_LV.slice().reverse().map(L=>`<tr><td>${matChip({lvl:MAT_LV.indexOf(L)})}</td><td>${L.d}</td></tr>`).join("")}</table>
+   <p class="small muted">Score 0–100 = 60% lead time (halves roughly every 70 h) + 40% agreement between the three model runs on wave size and DMI vs ECMWF wind, minus up to 15 points if the forecast moved since your last check. Firm ≥ 72 · Fairly settled 55–72 · Likely to shift 38–55 · Early look &lt; 38.</p>
    <h3 style="margin-top:14px">Safety levels</h3>
    <table class="cmp small">${HZ_LV.map(L=>`<tr><td>${hzChip(HZ_LV.indexOf(L))}</td><td>${L.d}</td></tr>`).join("")}</table>
    <p class="small muted">Each hour lists the hazards that apply at that spot – cold water, offshore drift, rips and along-shore currents, rocks, piers, strong wind, wave size vs your level, fading daylight, quiet unguarded beaches – ranked from highest to lowest. The overall level is the highest single hazard. "Depends on today's conditions" means the forecast moves it; "always here" means it comes with the spot or season.</p>
@@ -926,7 +996,7 @@ async function boot(){
     setStatus("Offline","err"); return;
   }
   if(!err) store("nk_last_v3",{W,Wv,Ws,at:Date.now()});
-  RAW={W,Wv,Ws}; rebuild(); route();
+  RAW={W,Wv,Ws}; rebuild(); if(!err) trackRuns(STATE); route();
   const at=err&&cached?new Date(cached.at):new Date();
   setStatus(`${err?"Offline · data from ":"Updated "}${at.toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"})}${Wv?"":" · EWAM unavailable"}`, err?"warn":"");
   try{ CLIM=await fetchClimate(); rebuild(); if(location.hash.startsWith("#spot-")) route(); }catch(e){ console.warn("climate",e); }
