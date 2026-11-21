@@ -191,6 +191,14 @@ function surfaceLvl(spot, h){
   if(h.cleanup&&l>1) l--;
   return clamp(l,0,5);
 }
+/* wave energy per metre of crest over one wavelength, kJ (E = ρ·g·H²/8 × L, L = g·T²/2π) – same physics as Surfline's kJ */
+function energyKJ(Hs,T){ if(Hs==null||T==null||T<=0) return null; return 1025*9.81*Hs*Hs/8*(9.81*T*T/(2*Math.PI))/1000; }
+const EN_LV=[{t:"Very weak",max:15,c:"#9aa5b1"},{t:"Weak",max:50,c:"#5fa8d3"},{t:"Moderate",max:150,c:"#2e8b57"},{t:"Punchy",max:300,c:"#e0a100"},{t:"Powerful",max:1e9,c:"#d9534f"}];
+function enLvl(kj){ return kj==null?null:EN_LV.findIndex(L=>kj<L.max); }
+function enTxt(kj){ return kj==null?"–":kj<10?fmt(kj,1):String(Math.round(kj)); }
+function enChip(kj){ const l=enLvl(kj); if(l==null) return ""; const L=EN_LV[l]; return `<span class="hzc" style="--c:${L.c};--b:#f3f5f7">${enTxt(kj)} kJ · ${L.t}</span>`; }
+function hEnergy(h){ if(!h||!h.scen||!h.scen.length) return null; let w=0,a=0; h.scen.forEach(x=>{ if(x.kj==null) return; const k=SCEN_W[x.key]; w+=k; a+=k*x.kj; }); return w?a/w:null; }
+function enSpread(h){ const v=(h.scen||[]).filter(x=>x.kj!=null); if(v.length<2) return null; const lo=Math.min(...v.map(x=>x.kj)), hi=Math.max(...v.map(x=>x.kj)); return {lo,hi,ratio:lo>0?hi/lo:null}; }
 function surfChip(l){ if(l==null) return ""; const L=SURF_LV[l]; return `<span class="hzc" style="--c:${L.c};--b:#f3f5f7">${L.t}</span>`; }
 function surfWhy(spot,h){ const P=h.P||{}, st=steepness(P.Hs,P.T); const bits=[];
   bits.push(`${compass(P.wd)} ${fmt(P.ws,0)} m/s ${windLabel(P.rel,P.ws)}`);
@@ -286,7 +294,7 @@ function buildModel(W, Wv, clim, cal, Ws){
       if(t < now - SHOW_PAST_H*3600) return null;
       const scen=[]; let wsD=series(beach,"wind_speed_10m","dmi_seamless"), wdD=series(beach,"wind_direction_10m","dmi_seamless");
       const wsE=series(beach,"wind_speed_10m","ecmwf_ifs025"), wdE=series(beach,"wind_direction_10m","ecmwf_ifs025");
-      const add=(key,Hs,T,dir,ws,wd)=>{ if(Hs==null||ws==null) return; const r=quality(s,Hs,T,dir,ws,wd,C); scen.push({key,Hs,T,dir,ws,wd,...r}); };
+      const add=(key,Hs,T,dir,ws,wd)=>{ if(Hs==null||ws==null) return; const r=quality(s,Hs,T,dir,ws,wd,C); scen.push({key,Hs,T,dir,ws,wd,kj:energyKJ(Hs,T),...r}); };
       if(runs.kwm_dmi){ const o=runs.kwm_dmi.sea[i]; add("kwm_dmi",o.Hs,o.Tp,o.dir,wsD&&wsD[i],wdD&&wdD[i]); }
       if(runs.kwm_ecmwf){ const o=runs.kwm_ecmwf.sea[i]; add("kwm_ecmwf",o.Hs,o.Tp,o.dir,wsE&&wsE[i],wdE&&wdE[i]); }
       let sst=null, sl=null;
@@ -748,14 +756,14 @@ function renderHome(){
       <div class="hero-row"><div><div class="hero-spot">${esc(s.name)}</div><div class="hero-when">${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</div></div>
       <div class="hero-p"><b>${pct(sl.pPeak)}</b><span>chance of a<br>good session</span></div></div>
       <div class="hero-surf"><span class="big">${rangeTxt(sl.peakH)}<small>m</small></span><span>${sizeWords(P.hb)}<br>${chip(sl.peakH.q)} ${SK.skillChip(P.req, SKILL_LVL)}</span></div>
-      <div class="hero-meta">${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s · ${windLabel(P.rel,P.ws)} · ${fmt(P.Hs)} m @ ${fmt(P.T)} s from ${compass(P.dir)}</div>
+      <div class="hero-meta">${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s · ${windLabel(P.rel,P.ws)} · ${fmt(P.Hs)} m @ ${fmt(P.T)} s from ${compass(P.dir)} · ⚡ ${enTxt(hEnergy(sl.peakH))} kJ</div>
       ${planHtml(s, sl)}<div class="sfl">${surfChip(surfaceLvl(s,sl.peakH))} <span class="small">⏱ ${lastsTxt(sl)}</span></div><div class="sfl">${hzChip(safety(sl.S,sl.peakH).lvl,"Safety:")} ${matLine(sl.S, sl.peakH)}</div>${gearHtml(sl.S, sl.peakH, true)}</a>`; };
   const heroes=tops.map((sl,i)=>heroCard(sl,i+1)).join("");
   const rest=slots.slice(tops.length).filter(x=>x.pPeak>=0.03).slice(0,10);
   const list = rest.map((sl,i)=>{ const s=sl.S.spot, P=sl.peakH.P, T=tier(sl.pPeak), pl=plan(s,sl.start,sl.end), mt=maturity(sl.S,sl.peakH);
     return `<details class="slot"><summary>
       <span class="slot-p"><b>${pct(sl.pPeak)}</b><span class="tier ${T.c}">${T.t}</span></span>
-      <span class="slot-main"><b>#${i+tops.length+1} ${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span><span class="small">${arrow(P.wd,12)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s ${windLabel(P.rel,P.ws)} · ${fmt(P.Hs)} m @ ${fmt(P.T)} s · leave ${tHr(pl.leave)}</span><span class="small muted">⏱ ${lastsTxt(sl)}</span><span class="slot-tags">${surfChip(surfaceLvl(s,sl.peakH))}${hzChip(safety(sl.S,sl.peakH).lvl,"Safety:")}${matChip(mt,"Forecast:")}</span></span>
+      <span class="slot-main"><b>#${i+tops.length+1} ${esc(s.name)}</b><span>${tDay(sl.start)} · ${tHr(sl.start)}–${tHr(sl.end)}</span><span class="small">${arrow(P.wd,12)} ${compass(P.wd)} ${fmt(P.ws,0)} m/s ${windLabel(P.rel,P.ws)} · ${fmt(P.Hs)} m @ ${fmt(P.T)} s · ⚡ ${enTxt(hEnergy(sl.peakH))} kJ · leave ${tHr(pl.leave)}</span><span class="small muted">⏱ ${lastsTxt(sl)}</span><span class="slot-tags">${surfChip(surfaceLvl(s,sl.peakH))}${hzChip(safety(sl.S,sl.peakH).lvl,"Safety:")}${matChip(mt,"Forecast:")}</span></span>
       <span class="slot-r">${chip(sl.peakH.q)}<span>${rangeTxt(sl.peakH)} m waves</span><span class="small muted">${P.req!=null?SK.SKILLS[P.req].t:""} · ${HZ_LV[safety(sl.S,sl.peakH).lvl].t.toLowerCase()}</span></span></summary>
       ${planHtml(s, sl)}<div class="sfl">${safetyLine(sl.S, sl.peakH)}</div><div class="sfl">${matLine(sl.S, sl.peakH)}</div>${gearHtml(sl.S, sl.peakH, true)}${whyHtml(sl.S, sl.peakH)}${locHtml(s)}
       <a class="btn small-btn" href="#spot-${s.id}" data-t="${sl.peakH.t}">Open ${esc(s.name)} forecast →</a></details>`; }).join("");
@@ -822,6 +830,7 @@ function renderSpot(id){
   const rows=dh.map(h=>{ const p=h.P||{}; return `<tr class="${h.t===sel.t?"sel":""} ${h.past?"past":""}" data-t="${h.t}">
      <td>${tHr(h.t)}</td><td><b>${pct(h.p)}</b></td><td>${p.above?`<span class="chip" style="--c:${SK.SKILLS[p.req].c}">${SK.SKILLS[p.req].t}+</span>`:chip(h.q)}</td><td class="num"><b>${rangeTxt(h)}</b></td><td>${p.req!=null?`<span class="chip" style="--c:${SK.SKILLS[p.req].c}">${SK.SKILLS[p.req].short}</span>`:"–"}</td><td>${h.P?surfChip(surfaceLvl(s,h)):"–"}</td><td>${h.P?hzChip(safety(S,h).lvl):"–"}</td>
      <td class="num">${fmt(p.Hs)}<small> m</small> ${fmt(p.T,0)}<small>s</small> <span class="muted">${compass(p.dir)}</span></td>
+     <td class="num">${(()=>{const e=hEnergy(h),l=enLvl(e);return e==null?"–":`<b style="color:${EN_LV[l].c}">${enTxt(e)}</b>`;})()}</td>
      <td class="num">${arrow(p.wd,13)} ${fmt(p.ws,0)}<small>${h.gust!=null?"–"+fmt(h.gust,0):""}</small> <span class="muted">${p.ws!=null?windLabel(p.rel,p.ws):""}</span></td></tr>`; }).join("");
   const sims=similarSessions(s.id, P), mySess=SESSIONS.filter(x=>x.spot===s.id).sort((a,b)=>b.start-a.start);
   const slotRows=slots.slice().sort((a,b)=>a.start-b.start).map(sl=>{ const T=tier(sl.pPeak), p=plan(s,sl.start,sl.end);
@@ -838,6 +847,7 @@ function renderSpot(id){
      <div class="stats">
        <div><span>Wind</span><b>${arrow(P.wd,14)} ${compass(P.wd)} ${fmt(P.ws,0)}</b><em>${P.ws!=null?windLabel(P.rel,P.ws):""}${sel.gust!=null?` · g${fmt(sel.gust,0)}`:""}</em></div>
        <div><span>Windswell</span><b>${fmt(P.Hs)} m</b><em>${fmt(P.T)} s from ${compass(P.dir)}</em></div>
+       <div><span>Energy</span><b>${enTxt(hEnergy(sel))} kJ</b><em>${(()=>{const l=enLvl(hEnergy(sel));return l==null?"":EN_LV[l].t.toLowerCase();})()}</em></div>
        <div><span>Water</span><b>${fmt(waterTemp(S,sel),0)}°C</b><em>air ${fmt(sel.temp,0)}°C</em></div>
        <div><span>Level</span><b>${sel.sl!=null?(sel.sl>0?"+":"")+fmt(sel.sl*100,0):"–"}</b><em>cm vs mean</em></div>
      </div>
@@ -855,16 +865,17 @@ function renderSpot(id){
    <div class="dtabs">${tabs}</div>
    <div class="card"><div class="ch-h"><h3>Hour by hour</h3><label class="tog"><input type="checkbox" id="night" ${VIEW.night?"checked":""}> night</label></div>
      <div id="dayChart"></div>
-     <div class="tbl-wrap"><table class="hours"><thead><tr><th>Time</th><th>Chance</th><th>Rating</th><th>Wave height m</th><th>Skill</th><th>Surface</th><th>Safety</th><th>Windswell</th><th>Wind m/s</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+     <div class="tbl-wrap"><table class="hours"><thead><tr><th>Time</th><th>Chance</th><th>Rating</th><th>Wave height m</th><th>Skill</th><th>Surface</th><th>Safety</th><th>Windswell</th><th>Energy kJ</th><th>Wind m/s</th></tr></thead><tbody>${rows}</tbody></table></div></div>
    <div class="card"><h3>Location</h3>${locHtml(s)}<div class="mapbox small-map" id="spMap"></div><p class="small muted">Google Maps satellite view of the beach. Tap the route links for live traffic.</p></div>
    <div class="card"><h3>What makes ${esc(s.name)} work</h3><p>${esc(s.desc)}</p>
      <dl class="kv"><dt>Needs</dt><dd>${esc(s.swellNeed)}</dd><dt>Best wind</dt><dd>${esc(s.idealWind)}</dd><dt>Bottom</dt><dd>${esc(s.bottom)}</dd><dt>Level</dt><dd>${esc(s.level)}</dd><dt>Hazards</dt><dd>${esc(s.hazards)}</dd></dl>
      <h3 style="margin-top:14px">Wind direction guide</h3>
      <table class="cmp">${guide.map(x=>`<tr><td><b>${x.n}</b></td><td>${GUIDE_ICON[x.code]}</td><td class="small">${x.txt}<br><span class="muted">${Math.round(x.F)} km fetch · ${x.lab}</span></td></tr>`).join("")}</table></div>
    <div class="card"><h3>Model check · ${tHr(sel.t)}</h3>
-     <table class="mc"><tr><th></th><th>Windswell</th><th>Surf</th><th>Rating</th></tr>
-     ${[["kwm_dmi","Kattegat model · DMI wind"],["kwm_ecmwf","Kattegat model · ECMWF wind"],["ewam","DWD EWAM wind-sea"]].map(([k,l])=>{const x=sel.scen.find(y=>y.key===k);return `<tr><td>${l}</td><td>${x?fmt(x.Hs)+" m · "+fmt(x.T)+" s "+compass(x.dir):"n/a"}</td><td>${x?fmt(x.hb):"–"}</td><td>${x?chip(x.q):"–"}</td></tr>`}).join("")}</table>
+     <table class="mc"><tr><th></th><th>Windswell</th><th>Energy</th><th>Surf</th><th>Rating</th></tr>
+     ${[["kwm_dmi","Kattegat model · DMI wind"],["kwm_ecmwf","Kattegat model · ECMWF wind"],["ewam","DWD EWAM wind-sea"]].map(([k,l])=>{const x=sel.scen.find(y=>y.key===k);return `<tr><td>${l}</td><td>${x?fmt(x.Hs)+" m · "+fmt(x.T)+" s "+compass(x.dir):"n/a"}</td><td>${x&&x.kj!=null?enTxt(x.kj)+" kJ":"–"}</td><td>${x?fmt(x.hb):"–"}</td><td>${x?chip(x.q):"–"}</td></tr>`}).join("")}</table>
      <p class="small muted">Agreement between the three runs raises the chance; disagreement lowers it.</p>
+     ${(()=>{const sp=enSpread(sel); if(!sp) return ""; const r=sp.ratio; return `<p class="small"><b>Energy spread:</b> ${enTxt(sp.lo)}–${enTxt(sp.hi)} kJ${r&&r>=1.05?` (top run ×${fmt(r,1)} the lowest)`:""}. ${r==null||r<1.5?"The models broadly agree on how much power reaches the coast.":r<2.5?"The models disagree noticeably – energy grows with height² × period², so small differences add up.":"The models disagree a lot on power – treat size and punch as uncertain."}</p>`;})()}
      ${S.tune&&S.tune.kwm_dmi?`<p class="small"><b>Auto-tune:</b> ${tuneTxt(S.tune.kwm_dmi)} (Kattegat model vs EWAM, last 72 h${S.tune.kwm_dmi.rmseRaw!=null?`, error ${fmt(S.tune.kwm_dmi.rmseRaw,2)} → ${fmt(S.tune.kwm_dmi.rmseTuned,2)} m`:""}).</p>`:""}
      ${C&&C.n?`<p class="small">Calibrated from your ${C.n} session${C.n>1?"s":""}: size ×${fmt(C.size,2)}, rating ${C.qBias>=0?"+":""}${fmt(C.qBias*100,0)} pts.</p>`:""}
      ${sims.length?`<p class="small"><b>${sims.length} similar logged session${sims.length>1?"s":""}</b> here averaged <b>${RATINGS[Math.round(sims.reduce((a,x)=>a+x.rating,0)/sims.length)].t}</b>.</p>`:""}</div>
@@ -959,6 +970,10 @@ function ratingsCard(){
    <table class="cmp">${RATING_DEF.map(([n,r,d])=>{const R=RATINGS.find(x=>x.t===n);return `<tr><td><span class="chip" style="--c:${R.c}">${n}</span></td><td class="small">q ${r}</td><td class="small">${d}</td></tr>`}).join("")}</table>
    <h3 style="margin-top:14px">What the % means</h3>
    <p class="small"><b>Chance of a good session</b> = probability the hour rates <b>Fair or better</b>. It combines three runs – Kattegat model with DMI wind (50%), with ECMWF wind (20%) and DWD's EWAM wind-sea (30%) – and leans on the spot's 5-year history the further ahead you look. <b>Go</b> ≥ 60% · <b>Worth a look</b> 40–60% · <b>Long shot</b> 20–40%.</p>
+   <h3 style="margin-top:14px">Wave energy (kJ)</h3>
+   <p class="small">Energy is the power packed into one wave, per metre of wave crest, from windswell height and period: <b>E = ρ·g·H²/8 × wavelength</b>. It's the same physics as Surfline's kJ figure: double the height → 4× the energy, double the period → 4× the energy. Two days with the same 0.8 m surf can feel very different – the one with the longer period has more push. The number shown is the weighted average of the three model runs; the spread between them on each spot's Model check shows how much the wave models disagree.</p>
+   <table class="cmp small">${EN_LV.map((L,i)=>`<tr><td><span class="hzc" style="--c:${L.c};--b:#f3f5f7">${L.t}</span></td><td>${["< 15 kJ","15–50 kJ","50–150 kJ","150–300 kJ","300+ kJ"][i]}</td><td>${["Barely breaking – longboard only.","Typical Kattegat windswell: soft, crumbly, needs volume.","A good Kattegat day: waves with some push.","Strong blow, 1.5 m+ at 6 s: real power for here.","Storm sea – rare in the Kattegat, heavy and messy."][i]}</td></tr>`).join("")}</table>
+   <p class="small muted">For scale with the same formula: Kattegat 1 m @ 5 s ≈ ${Math.round(energyKJ(1,5))} kJ · Kattegat gale 2 m @ 6.5 s ≈ ${Math.round(energyKJ(2,6.5))} kJ · North Sea (Klitmøller) 1.5 m @ 9 s ≈ ${Math.round(energyKJ(1.5,9))} kJ · Peniche 2 m @ 13 s ≈ ${Math.round(energyKJ(2,13))} kJ. Surfline doesn't publish its exact recipe and works from offshore swell partitions, so its numbers for the same day can differ somewhat, but the scale is comparable. Kattegat windswell has 10–30× less energy than Atlantic groundswell of similar height.</p>
    <h3 style="margin-top:14px">Surface – clean or messy</h3>
    <table class="cmp small">${SURF_LV.map((L,i)=>`<tr><td>${surfChip(i)}</td><td>${["Under 2.5 m/s – mirror-like.","Offshore/side-off under 8 m/s – groomed faces.","Light wind or cross-shore under 5 m/s – a little ruffle.","Cross-shore 5–9 m/s or light onshore – bumpy but rideable.","Onshore 7–11 m/s or cross-shore 9–12 m/s – wind chop on the faces.","Onshore 11 m/s+ – washing machine."][i]}</td></tr>`).join("")}</table>
    <p class="small muted">One step cleaner when the wind is from the direction locals rate best for that spot, or in a clean-up after a blow. One step messier when the windswell is very short and steep (height ÷ period² high) – that's when Kattegat waves close out. "Waves rideable ~N h" counts the hours around the peak rated Poor–Fair or better, and whether the sea is building, holding or fading.</p>
